@@ -12,6 +12,11 @@ export default {
         background: "var(--background)",
         foreground: "var(--foreground)",
       },
+      fontSize: {
+        'tiny': '0.625rem', 
+        '8px': '8px',     
+        '12px': '12px', 
+      },
     },
   },
   plugins: [],
