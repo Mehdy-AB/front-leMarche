@@ -1,3 +1,4 @@
+import { getToken } from "next-auth/jwt";
 import { z } from "zod";
 
 // brand
@@ -81,15 +82,26 @@ export const userDtoSchema = z.object({
   username: z.string().min(3).max(30),
   userType: z.enum(["INDIVIDUAL", "PROFESSIONAL"]),
   phone: z.string().min(10).max(15).regex(/^\d+$/),
-  email: z.string().email().min(5).max(100),
+  token: z.string().jwt(),
   password: z.string().min(8).max(30),
-  verificationCode: z.string().length(6).regex(/^\d+$/),
+  passwordConfirmation: z.string().min(8).max(30),
+}).refine((data)=>data.password===data.passwordConfirmation,{
+  message:'password not match',
+  path:['passwordConfirmation']
 });
 
 // SendCode DTO
 export const sendCodeDtoSchema = z.object({
-  email: z.string().email().min(5).max(100),
+  email: z.string().email('Vérifiez l’adresse email, son format n’est pas valide.').min(5,'Vérifiez l’adresse email, son format n’est pas valide.').max(100,'Vérifiez l’adresse email, son format n’est pas valide.'),
 });
+export const otpSchema = z.object({
+    otp: z
+    .array(z.string().regex(/^\d$/, 'Must be a digit'))
+    .length(6, 'Code must have 6 digits'),
+    email: z.string().email().min(5).max(100),
+})
+
+export type OtpSchema = z.infer<typeof otpSchema>
 
 export type AuthDtoEmail = z.infer<typeof authDtoEmailSchema>;
 export type AuthDtoPhone = z.infer<typeof authDtoPhoneSchema>;

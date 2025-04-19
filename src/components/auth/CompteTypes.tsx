@@ -1,10 +1,14 @@
 
-export const CompteTypes=()=>{
+export const CompteTypes=({etape,setEtape,setCompteType}:{
+  etape:number,
+  setEtape:React.Dispatch<React.SetStateAction<number>>
+  setCompteType:React.Dispatch<React.SetStateAction<"INDIVIDUAL"|"PROFESSIONAL">>
+})=>{
 
     return(<>
-    <span className="text-xs mt-10 text-center mb-2">Choisissez votre type de compte</span>
+    <span className=" mt-10 text-center mb-2 text-lg font-semibold">Choisissez votre type de compte</span>
         <div className="grid gap-20 px-5 grid-cols-2">
-          <button
+          <button onClick={()=>{setCompteType('INDIVIDUAL');setEtape(etape+1)}}
           className="w-full grid grid-cols-5 items-center px-6 gap-x-3 py-2.5 border rounded-lg text-sm font-medium hover:bg-gray-50 duration-150 active:bg-gray-300"
         >
           
@@ -17,11 +21,11 @@ export const CompteTypes=()=>{
           </div>
           
         </button>
-        <button
+        <button onClick={()=>{setCompteType('PROFESSIONAL');setEtape(etape+1)}}
           className="w-full grid grid-cols-6 items-center px-6 gap-x-3 py-2.5 border rounded-lg text-sm font-medium hover:bg-gray-50 duration-150 active:bg-gray-300"
         >
           <svg version="1.0" id="Layer_1" xmlns="http://www.w3.org/2000/svg"
-            className="size-5" viewBox="0 0 64 64" enable-background="new 0 0 64 64" >
+            className="size-5" viewBox="0 0 64 64" enableBackground="new 0 0 64 64" >
           <g>
             <rect x="14" y="36" fill="#231F20" width="4" height="10"/>
             <path fill="currentColor" d="M52,47c0,0.553-0.447,1-1,1h-6c-0.553,0-1-0.447-1-1v-5H20v5c0,0.553-0.447,1-1,1h-6c-0.553,0-1-0.447-1-1
