@@ -1,143 +1,160 @@
 "use client"
-import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { signIn } from "next-auth/react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { emailSchema, LoginDto, loginSchema, phoneSchema, usernameSchema } from "@/app/lib/validation/all.schema";
 import { useRouter } from "next/navigation";
-import { EmailRegister } from "@/components/auth/EmailRegister";
-import { OtpForm } from "@/components/auth/OtpForm";
-import { CompteTypes } from "@/components/auth/CompteTypes";
-import { UserInfo } from "@/components/auth/UserInfo";
 import { AnimatePresence, motion } from "framer-motion";
+import { useState } from "react";
 
+const SignupPage = () => {
+  const {
+     register,
+     handleSubmit,
+     setError,
+     formState: { errors,isSubmitting },
+   } = useForm<LoginDto>({resolver:zodResolver(loginSchema)})
 
-const SigninPage = () => {
-    const{data: session} = useSession();
-    const router = useRouter();
-    const [etape,setEtape] = useState(0)
-    const [email,setEmail] = useState('')
-    const [token,setToken] = useState('')
-    const [compteType,setCompteType] = useState<"INDIVIDUAL"|"PROFESSIONAL">('INDIVIDUAL')
+  const route = useRouter();
+  const [showPassword,setShowPassword]=useState(false);
+  const onSubmit = async (data: LoginDto) => {
+    const { identifier } = data
 
-    const components = [
-      <EmailRegister setEmail={setEmail} key="email" etape={etape} setEtape={setEtape} />,
-      <OtpForm key="otp" email={email} setToken={setToken} etape={etape} setEtape={setEtape} />,
-      <CompteTypes key="compte" setCompteType={setCompteType} etape={etape} setEtape={setEtape} />,
-      <UserInfo key="user" compteType={compteType} token={token} etape={etape} setEtape={setEtape} />,
-    ]
+    const isEmail = emailSchema.safeParse(identifier).success
+    const isPhone = phoneSchema.safeParse(identifier).success
+    const isUsername = usernameSchema.safeParse(identifier).success
+  
+    let type: 'email' | 'phone' | 'username' = 'username' // default
+  
+    if (isEmail) type = 'email'
+    else if (isPhone) type = 'phone'
+    else if (isUsername) type = 'username'
+    console.log(type)
+    // axiosGhost.post('/auth/register/sendCode',data).then(res=>{
+    //   if(res.data.error){
+    //     setError('email', { message: res.data.message })
+    //     return;
+    //   }
+    //   setEmail(data.email)
+    //   setEtape(etape + 1)
+    // }).catch(e=>{
+    //   setError('email', { message: e.response.data.error || 'Email is invalide' })
+    // })
+    // await signIn("credentials", {
+    //   username: data.credentials,
+    //   password: data.password,
+    //   redirect: true,
+    //   callbackUrl: "/dashboard",
+    // }).then((result) => {
+    //   if (result?.error) console.error(result.error);
+    // });
+  }
 
-if(!session || !session?.user){
-  return (
-    <>
-      <section className=" flex bg-white w-full text-gray-600 h-screen justify-center items-center">
-      <div className="flex flex-col w-[40rem] items-center mb-36">
-      <h1 className="text-4xl font-semibold text-gray-700">Create an account</h1>
-      <h4 className="text-sm text-gray-500">Already have an account? 
-        <a className="underline cursor-pointer">Log in</a>
+  return (<>
+    <section className=" flex bg-white w-full text-gray-600 h-screen justify-center items-center">
+      <div className="flex flex-col w-[40rem] items-center">
+      <h1 className="text-4xl font-semibold text-gray-700">Sign in account</h1>
+      <h4 className="text-sm text-gray-500">Don't have an account? 
+        <a className="underline cursor-pointer" onClick={()=>{route.push('/api/auth/signup')}}> SignUp</a>
       </h4>
-        <div className="mt-12">
-          <div className="grid grid-cols-2 justify-start gap-8 px-[100px]">
-            <span className="flex w-full">
-              <span className={`${etape===0?'w-0':etape===1?'w-1/2':'w-full'} transition-all duration-500 w-full bg-orange-400 h-[2px]`}/>
-              <span className={`${etape===0?'w-full':etape===1?'w-1/2':'w-0'} transition-all duration-500 bg-gray-400 h-[2px]`}/>
-            </span>
-            
-            <span className="flex w-full">
-              <span className={`${etape<3?'w-0':'w-full'} transition-all duration-500 w-full bg-orange-400 h-[2px]`}/>
-              <span className={`${etape<3?'w-full':'w-0'} transition-all duration-500 bg-gray-400 h-[2px]`}/>
-            </span>
-          </div>
-          <div className="grid gap-16 grid-cols-3">
-            <div className={`flex flex-col justify-center items-center ${etape<2?'text-orange-400':''}`}>
-              <span>
-                <svg className="size-5" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" 
-                viewBox="0 0 496.158 496.158">
-              <path style={{fill:"currentColor"}} d="M248.082,0.003C111.07,0.003,0,111.061,0,248.085c0,137,111.07,248.07,248.082,248.07
-                c137.006,0,248.076-111.07,248.076-248.07C496.158,111.061,385.088,0.003,248.082,0.003z"/>
-              <path style={{fill:"#FFFFFF"}} d="M278.767,145.419c-3.126-4.003-7.276-6.006-12.451-6.006c-4.591,0-7.716,0.879-9.375,2.637
-                c-1.662,1.758-5.226,6.445-10.693,14.063c-5.47,7.617-11.744,14.502-18.823,20.654c-7.082,6.152-16.53,12.012-28.345,17.578
-                c-7.91,3.712-13.429,6.738-16.553,9.082c-3.126,2.344-4.688,6.006-4.688,10.986c0,4.298,1.586,8.082,4.761,11.353
-                c3.172,3.273,6.812,4.907,10.913,4.907c8.592,0,25.292-9.521,50.098-28.564V335.41c0,7.814,1.806,13.722,5.42,17.725
-                c3.612,4.003,8.397,6.006,14.355,6.006c13.378,0,20.068-9.814,20.068-29.443V161.972
-                C283.455,154.941,281.892,149.425,278.767,145.419z"/>
-              </svg>
-              </span>
-              <span className="text-xs">Enter your email adresse</span>
-            </div>
-            <div className={`flex flex-col justify-center items-center ${etape==2?'text-orange-400':etape>2?'':'text-gray-300'}`}>
-              <span>
-                <svg className="size-5" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg"  
-                  viewBox="0 0 496.158 496.158" >
-                <path style={{fill:"currentColor"}} d="M248.082,0.003C111.07,0.003,0,111.061,0,248.085c0,137,111.07,248.07,248.082,248.07
-                  c137.006,0,248.076-111.07,248.076-248.07C496.158,111.061,385.088,0.003,248.082,0.003z"/>
-                <path style={{fill:"#FFFFFF"}} d="M319.783,325.595c-4.005-3.124-9.814-4.688-17.432-4.688h-76.465c2.44-3.71,4.834-6.885,7.178-9.521
-                  c5.468-6.64,15.55-15.967,30.249-27.979c14.696-12.012,25.17-20.824,31.421-26.44c6.249-5.614,12.378-13.378,18.384-23.291
-                  c6.006-9.911,9.009-20.922,9.009-33.032c0-7.713-1.442-15.161-4.321-22.339c-2.882-7.178-6.91-13.5-12.085-18.97
-                  c-5.177-5.468-11.183-9.764-18.018-12.891c-10.547-4.688-23.291-7.031-38.232-7.031c-12.403,0-23.218,1.831-32.446,5.493
-                  s-16.846,8.473-22.852,14.429c-6.006,5.958-10.524,12.598-13.55,19.922c-3.028,7.324-4.541,14.355-4.541,21.094
-                  c0,5.566,1.611,9.961,4.834,13.184s7.274,4.834,12.158,4.834c5.566,0,9.789-1.758,12.671-5.273
-                  c2.879-3.516,5.468-8.544,7.764-15.088c2.293-6.542,3.93-10.547,4.907-12.012c7.324-11.229,17.381-16.846,30.176-16.846
-                  c6.054,0,11.646,1.369,16.772,4.102c5.127,2.735,9.178,6.569,12.158,11.499c2.978,4.933,4.468,10.524,4.468,16.772
-                  c0,5.763-1.392,11.646-4.175,17.651s-6.837,11.865-12.158,17.578c-5.324,5.713-11.989,11.403-19.995,17.065
-                  c-4.493,3.028-11.964,9.352-22.412,18.97c-10.451,9.62-22.169,21.167-35.156,34.644c-3.126,3.321-6.006,7.887-8.643,13.696
-                  c-2.637,5.812-3.955,10.474-3.955,13.989c0,5.47,2.051,10.231,6.152,14.282c4.102,4.054,9.814,6.079,17.139,6.079H306.6
-                  c6.445,0,11.254-1.659,14.429-4.98c3.172-3.319,4.761-7.372,4.761-12.158C325.789,332.97,323.786,328.722,319.783,325.595z"/>
-                </svg>
-              </span>
-              <span className="text-xs">Chose your account type</span>
-            </div>
-            <div className={`flex flex-col justify-center items-center ${etape==3?'text-orange-400':'text-gray-300'}`}>
-              <span>
-                <svg className="size-5" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" 
-                  viewBox="0 0 496.158 496.158">
-                <path style={{fill:"currentColor"}} d="M248.082,0.003C111.07,0.003,0,111.061,0,248.085c0,137,111.07,248.07,248.082,248.07
-                  c137.006,0,248.076-111.07,248.076-248.07C496.158,111.061,385.088,0.003,248.082,0.003z"/>
-                <path style={{fill:"#FFFFFF"}} d="M319.637,269.711c-2.637-6.395-6.569-12.231-11.792-17.505c-5.226-5.273-11.646-9.961-19.263-14.063
-                  c7.91-6.64,13.989-13.451,18.237-20.435c4.248-6.981,6.372-15.355,6.372-25.122c0-7.42-1.465-14.355-4.395-20.801
-                  s-7.276-12.108-13.037-16.992c-5.763-4.882-12.55-8.617-20.361-11.206c-7.814-2.586-16.457-3.882-25.928-3.882
-                  c-10.84,0-20.654,1.538-29.443,4.614s-16.139,7.155-22.046,12.231c-5.91,5.079-10.4,10.426-13.477,16.04
-                  c-3.076,5.617-4.614,10.963-4.614,16.04c0,5.273,1.634,9.499,4.907,12.671c3.271,3.175,6.859,4.761,10.767,4.761
-                  c3.319,0,6.249-0.586,8.789-1.758c2.538-1.172,4.296-2.783,5.273-4.834c1.659-3.809,3.49-7.86,5.493-12.158
-                  c2-4.296,4.125-7.812,6.372-10.547c2.245-2.733,5.296-4.93,9.155-6.592c3.856-1.659,8.764-2.49,14.722-2.49
-                  c8.789,0,15.77,2.71,20.947,8.13c5.175,5.42,7.764,11.891,7.764,19.409c0,9.865-3.248,17.432-9.741,22.705
-                  c-6.496,5.273-14.234,7.91-23.218,7.91h-6.006c-6.935,0-12.158,1.442-15.674,4.321c-3.516,2.882-5.273,6.665-5.273,11.353
-                  c0,4.786,1.465,8.521,4.395,11.206c2.93,2.687,7.079,4.028,12.451,4.028c1.172,0,3.809-0.194,7.91-0.586
-                  c4.102-0.389,7.127-0.586,9.082-0.586c11.133,0,19.823,3.248,26.074,9.741c6.249,6.496,9.375,15.454,9.375,26.88
-                  c0,7.716-1.831,14.502-5.493,20.361s-8.302,10.279-13.916,13.257c-5.617,2.98-11.451,4.468-17.505,4.468
-                  c-10.547,0-18.727-3.296-24.536-9.888c-5.812-6.592-11.256-16.674-16.333-30.249c-0.783-2.245-2.442-4.175-4.98-5.786
-                  c-2.541-1.611-5.177-2.417-7.91-2.417c-5.47,0-10.034,1.735-13.696,5.2c-3.662,3.468-5.493,8.034-5.493,13.696
-                  c0,4.395,1.538,9.961,4.614,16.699s7.617,13.257,13.623,19.556s13.646,11.549,22.925,15.747c9.276,4.198,19.775,6.299,31.494,6.299
-                  c11.522,0,22.046-1.831,31.567-5.493s17.748-8.739,24.683-15.234c6.933-6.493,12.181-13.891,15.747-22.192
-                  c3.563-8.299,5.347-16.894,5.347-25.781C323.592,283.018,322.273,276.109,319.637,269.711z"/>
-                </svg>
-              </span>
-              <span className="text-xs">Provide your basic info</span>
-            </div>
-          </div>
-        </div>
-
-      <div className="flex flex-col gap-1 w-full">
+        
+      
+      <div className="flex flex-col w-full">
       <div className="relative w-full h-[32rem] overflow-hidden" >
-        <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait">
           <motion.div
-            key={etape}
             initial={{ x: 300, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -300, opacity: 0 }}
             transition={{ duration: 0.4 }}
             className="absolute w-full h-full flex  flex-col gap-1"
           >
-            {components[etape]}
+                  <form className="flex flex-col gap-y-2 w-full" onSubmit={handleSubmit(onSubmit)}>
+                    <span className="mt-10 font-semibold">Connect with 
+                      <span className="text-sm font-sans"> ( Email, UserName, number )</span>
+                    </span>
+                    <input
+                        type="text"
+                        {...register("identifier")}
+                        placeholder="Enter your email address"
+                        className="rounded-lg border border-gray-300 h-12 px-4 outline-none focus:border-gray-500"
+                      />
+                      {errors.identifier && (
+                        <span className="text-red-500 text-xs">
+                          {errors.identifier.message}
+                        </span>
+                      )}
+                      <span className="mt-2 font-semibold">Enter your password</span>
+                      <div className=" relative w-full">
+                      <input
+                        type={showPassword?'text':"password"}
+                        {...register("password")}
+                        placeholder="Enter your password"
+                        className="rounded-lg w-full border border-gray-300 h-12 px-4 outline-none focus:border-gray-500"
+                      />
+                      <button type="button" onClick={()=>setShowPassword(!showPassword)}  className={`absolute inset-y-0 end-0 flex items-center z-20 px-3 cursor-pointerrounded-e-md outline-hidden ${showPassword?'text-blue-600':'text-gray-400 '}`}>
+                        <svg className="shrink-0 size-3.5" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path className="hs-password-active:hidden" d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path>
+                          <path className="hs-password-active:hidden" d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path>
+                          <path className="hs-password-active:hidden" d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path>
+                          <line className="hs-password-active:hidden" x1="2" x2="22" y1="2" y2="22"></line>
+                          <path className="hidden hs-password-active:block" d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                          <circle className="hidden hs-password-active:block" cx="12" cy="12" r="3"></circle>
+                        </svg>
+                      </button>
+                      </div>
+                      {errors.password && (
+                        <span className="text-red-500 text-xs">
+                          {errors.password.message}
+                        </span>
+                      )}
+                      <span className="mt-1  text-xs underline cursor-pointer"  onClick={()=>{route.push('/api/auth/forget-password')}}>Mot de passe oublié</span>
+                    <button type="submit" className="bg-orange-400 rounded-4xl py-3 rounded-full mt-6 font-semibold text-white">Sign in</button>
+                  </form>
+                  <div className="grid grid-cols-11 items-center mt-16">
+                    <span className="w-full col-span-5 rounded bg-gray-200 h-[2px]"></span>
+                    <span className="w-full col-span-1 text-center text-xl font-semibold">OR</span>
+                    <span className="w-full col-span-5 rounded bg-gray-200 h-[2px]"></span>
+                  </div>
+                  <div className="grid gap-20 px-5 grid-cols-2">
+                    <button
+                    className="w-full flex items-center justify-center gap-x-3 py-2.5 border rou</div>nded-lg text-sm font-medium hover:bg-gray-50 duration-150 active:bg-gray-100"
+                  >
+                    <svg className="size-5" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M30.0014 16.3109C30.0014 15.1598 29.9061 14.3198 29.6998 13.4487H16.2871V18.6442H24.1601C24.0014 19.9354 23.1442 21.8798 21.2394 23.1864L21.2127 23.3604L25.4</div>536 26.58L25.7474 26.6087C28.4458 24.1665 30.0014 20.5731 30.0014 16.3109Z" fill="#4285F4"/>
+                    <path d="M16.2863 29.9998C20.1434 29.9998 23.3814 28.7553 25.7466 </button>26.6086L21.2386 23.1863C20.0323 24.0108 18.4132 24.5863 16.2863 24.5863C12.5086 24.5863 9.30225 22.1441 8.15929 18.7686L7.99176 18.7825L3.58208 22.127L3.52441 22.2841C5.87359 26.8574 10.699 29.9998 16.2863 29.9998Z" fill="#34A853"/>
+                    <path d="M8.15964 18.769C7.85806 17.8979 7.68352 16.9645 7.68352 16.0001C7.68352 15.0356 7.85806 14.1023 8.14377 13.2312L8.13578 13.0456L3.67083 9.64746L3.52475 9.71556C2.55654 11.6134 2.00098 13.7445 2.00098 16.0001C2.00098 18.2556 2.55654 20.3867 3.52475 22.2845L8.15964 18.769Z" fill="#FBBC05"/>
+                    <path d="M16.2864 7.4133C18.9689 7.4133 20.7784 8.54885 21.8102 9.4978L25.8419 5.64C23.3658 3.38445 20.1435 2 16.2864 2C10.699 2 5.8736 5.1422 3.52441 9.71549L8.14345 13.2311C9.30229 9.85555 12.5086 7.4133 16.2864 7.4133Z" fill="#EB4335"/>
+                    </svg>
+                    Continue with Google
+                  </button>
+                  <button
+                    className="w-full flex items-center justify-center gap-x-3 py-2.5 border rounded-lg text-sm font-medium hover:bg-gray-50 duration-150 active:bg-gray-100"
+                  >
+                    <svg className="size-5" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="16" cy="16" r="14" fill="url(#paint0_linear_87_7208)"/>
+                    <path d="M21.2137 20.2816L21.8356 16.3301H17.9452V13.767C17.9452 12.6857 18.4877 11.6311 20.2302 11.6311H22V8.26699C22 8.26699 20.3945 8 18.8603 8C15.6548 8 13.5617 9.89294 13.5617 13.3184V16.3301H10V20.2816H13.5617V29.8345C14.2767 29.944 15.0082 30 15.7534 30C16.4986 30 17.2302 29.944 17.9452 29.8345V20.2816H21.2137Z" fill="white"/>
+                    <defs>
+                    <linearGradient id="paint0_linear_87_7208" x1="16" y1="2" x2="16" y2="29.917" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#18ACFE"/>
+                    <stop offset="1" stopColor="#0163E0"/>
+                    </linearGradient>
+                    </defs>
+                    </svg>
+                    Continue with Facebook
+                  </button>
+                  </div>
           </motion.div>
         </AnimatePresence>
+
+        
       </div>  
       
       </div>
       </div>
       </section>
     </>
-  );}
-else{
-    router.push("/dashboard");
-}
-}
+  );
+};
 
-export default SigninPage;
+export default SignupPage;

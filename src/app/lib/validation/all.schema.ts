@@ -50,23 +50,6 @@ export const filterDtoSchema = z.object({
 
 export type FilterDto = z.infer<typeof filterDtoSchema>;
 //?----------------------------------------------------
-// Email login
-export const authDtoEmailSchema = z.object({
-  email: z.string().email().min(5).max(100),
-  password: z.string().min(8).max(30),
-});
-
-// Phone login
-export const authDtoPhoneSchema = z.object({
-  phone: z.string().min(10).max(15).regex(/^\d+$/),
-  password: z.string().min(8).max(30),
-});
-
-// Username login
-export const authDtoSchema = z.object({
-  username: z.string().min(3).max(30),
-  password: z.string().min(8).max(30),
-});
 
 // Company DTO
 export const companyDtoSchema = z.object({
@@ -103,9 +86,49 @@ export const otpSchema = z.object({
 
 export type OtpSchema = z.infer<typeof otpSchema>
 
-export type AuthDtoEmail = z.infer<typeof authDtoEmailSchema>;
-export type AuthDtoPhone = z.infer<typeof authDtoPhoneSchema>;
-export type AuthDto = z.infer<typeof authDtoSchema>;
+// Patterns
+export const emailSchema = z.string().email()
+export const phoneSchema = z
+  .string()
+  .regex(/^[0-9]{10,15}$/, 'Invalid phone number')
+export const usernameSchema = z
+  .string()
+  .min(3)
+  .max(20)
+  .regex(/^[a-zA-Z_]+[a-zA-Z0-9_]$/, 'Only letters, numbers, underscores allowed')
+
+// Union of the three possibilities
+export const loginSchema = z.object({
+  identifier: z
+    .string()
+    .min(3, 'Input required')
+    .refine(
+      (val) =>
+        emailSchema.safeParse(val).success ||
+        phoneSchema.safeParse(val).success ||
+        usernameSchema.safeParse(val).success,
+      {
+        message: 'Must be a valid email, username, or phone number',
+      }
+    ),
+  password: z
+    .string()
+    .min(8, 'Password is required')
+    .refine(
+      (val) =>
+        /[A-Z]/.test(val) && // At least one uppercase letter
+        /[a-z]/.test(val) && // At least one lowercase letter
+        /\d/.test(val) && // At least one number
+        /[!@#$%^&*(),.?":{}|<>]/.test(val), // At least one special character
+      {
+        message:
+          'Password must include at least one uppercase letter, one lowercase letter, one number, and one special character',
+      }
+    ),
+});
+
+export type LoginDto = z.infer<typeof loginSchema>
+
 export type UserDto = z.infer<typeof userDtoSchema>;
 export type CompanyDto = z.infer<typeof companyDtoSchema>;
 export type SendCodeDto = z.infer<typeof sendCodeDtoSchema>;
