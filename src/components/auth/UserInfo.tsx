@@ -1,52 +1,61 @@
-import { OtpSchema, otpSchema, UserDto, userDtoSchema } from "@/app/lib/validation/all.schema";
+import axiosGhost from "@/app/lib/req/axiosGhost";
+import {  UserDto, userDtoSchema } from "@/app/lib/validation/all.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import email from "next-auth/providers/email";
-import { useEffect } from "react";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 
-export const UserInfo=({etape,setEtape,compteType,token}:{
+export const UserInfo=({etape,setEtape,compteType,token,username}:{
   etape:number,
   compteType:"INDIVIDUAL" | "PROFESSIONAL",
   token:string
+  username:string
   setEtape:React.Dispatch<React.SetStateAction<number>>
 })=>{
   const {
       control,
       handleSubmit,
       register,
-      reset,
+      setError,
       getValues,
       formState: { errors,isSubmitting },
     } = useForm<UserDto>({
       resolver: zodResolver(userDtoSchema),
       defaultValues: {
         token:token,
-        userType:compteType
+        userType:compteType,
+        username:username
       },
     })
-
-    useEffect(()=>{
-      // if(errors.token)
-      //   setEtape(1)
-      // if(errors.userType)
-      //   setEtape(2)
-    },[errors])
-
+    const router = useRouter();
     const onSubmit = (data:UserDto) => {
-      setEtape(etape + 1)
+      axiosGhost.post('/auth/register',data).then(async res=>{
+        if(res.data.error){
+          setError('password', { message: res.data.message })
+          return;
+        }
+        await signIn("credentials", {
+          identifier: data.username,
+          password: data.password,
+          redirect: true,
+          callbackUrl: "/",
+        })
+      }).catch(e=>{
+        setError('password', { message: e.response.data.error || 'information invalide' })
+      })
     }
 
     return(<>
     <form className="flex flex-col w-full " onSubmit={handleSubmit(onSubmit)}>
         <span className="text-lg font-semibold text-center mt-10 mb-5 ">compte information</span>
         <div className="grid text-xs grid-cols-2 gap-x-4 gap-y-2">
-        <label className="font-bold text-gray-500">FullName</label>
-        <label className="font-bold text-gray-500">UserName</label>
-        <input {...register('fullName')} type="text" placeholder="Enter your fullName" className=" rounded-lg border border-gray-300 h-8 px-4 outline-none focus:border-gray-500"/>
+        <label className="font-bold text-gray-500">FirstName</label>
+        <label className="font-bold text-gray-500">LastName</label>
+        <input {...register('firstName')} type="text" placeholder="Enter your firstName" className=" rounded-lg border border-gray-300 h-8 px-4 outline-none focus:border-gray-500"/>
         
-        <input {...register('username')} type="text"  placeholder="Enter your userName" className=" rounded-lg border border-gray-300 h-8 px-4 outline-none focus:border-gray-500"/>
-        <span>{errors.fullName && (
-          <span className="text-xs text-red-500 mt-1">{errors.fullName.message}</span>
+        <input {...register('lastName')} type="text"  placeholder="Enter your userName" className=" rounded-lg border border-gray-300 h-8 px-4 outline-none focus:border-gray-500"/>
+        <span>{errors.lastName && (
+          <span className="text-xs text-red-500 mt-1">{errors.lastName.message}</span>
         )}</span>
         <span>{errors.username && (
           <span className="text-xs text-red-500 mt-1">{errors.username.message}</span>

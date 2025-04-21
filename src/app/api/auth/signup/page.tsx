@@ -7,27 +7,36 @@ import { OtpForm } from "@/components/auth/OtpForm";
 import { CompteTypes } from "@/components/auth/CompteTypes";
 import { UserInfo } from "@/components/auth/UserInfo";
 import { AnimatePresence, motion } from "framer-motion";
+import { UserNameEtape } from "@/components/auth/UserNameEtape";
+import LineLoader from "@/app/lib/loaders/LineLoader";
 
 
 const SigninPage = () => {
-    const{data: session} = useSession();
-    const router = useRouter();
+    
     const [etape,setEtape] = useState(0)
     const [email,setEmail] = useState('')
+    const [username,setUsername] = useState('')
     const [token,setToken] = useState('')
     const [compteType,setCompteType] = useState<"INDIVIDUAL"|"PROFESSIONAL">('INDIVIDUAL')
     const components = [
       <EmailRegister setEmail={setEmail} key="email" etape={etape} setEtape={setEtape} />,
       <OtpForm key="otp" email={email} setToken={setToken} etape={etape} setEtape={setEtape} />,
       <CompteTypes key="compte" setCompteType={setCompteType} etape={etape} setEtape={setEtape} />,
-      <UserInfo key="user" compteType={compteType} token={token} etape={etape} setEtape={setEtape} />,
+      <UserNameEtape key="username" setUserName={setUsername} etape={etape} setEtape={setEtape} />,
+      <UserInfo key="user" username={username} compteType={compteType} token={token} etape={etape} setEtape={setEtape} />,
     ]
+    const { data: session } = useSession();
+    const router = useRouter();
+    useEffect(() => {
+      if (session) {
+        router.push("/");
+      }
+    }, [session]);
 
-if(!session || !session?.user){
   return (
     <>
-      <section className=" flex bg-white w-full text-gray-600 h-screen justify-center items-center">
-      <div className="flex flex-col w-[40rem] items-center">
+      <section className=" flex w-full h-screen justify-center pt-[8%]">
+      <div className="flex flex-col  w-[40rem] items-center">
       <h1 className="text-4xl font-semibold text-gray-700">Create an account</h1>
       <h4 className="text-sm text-gray-500">Already have an account? 
         <a className="underline cursor-pointer" onClick={()=>{router.push('/api/auth/signin')}}> Log in</a>
@@ -40,8 +49,8 @@ if(!session || !session?.user){
             </span>
             
             <span className="flex w-full">
-              <span className={`${etape<3?'w-0':'w-full'} transition-all duration-500 bg-orange-400 h-[2px]`}/>
-              <span className={`${etape<3?'w-full':'w-0'} transition-all duration-500 bg-gray-400 h-[2px]`}/>
+              <span className={`${etape<3?'w-0':etape==3?'w-1/2':'w-full'} transition-all duration-500 bg-orange-400 h-[2px]`}/>
+              <span className={`${etape<3?'w-full':etape==3?'w-1/2':'w-0'} transition-all duration-500 bg-gray-400 h-[2px]`}/>
             </span>
           </div>
           <div className="grid gap-16 grid-cols-3">
@@ -83,7 +92,7 @@ if(!session || !session?.user){
               </span>
               <span className="text-xs">Chose your account type</span>
             </div>
-            <div className={`flex flex-col justify-center items-center ${etape==3?'text-orange-400':'text-gray-300'}`}>
+            <div className={`flex flex-col justify-center items-center ${etape==4?'text-orange-400':'text-gray-300'}`}>
               <span>
                 <svg className="size-5" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" 
                   viewBox="0 0 496.158 496.158">
@@ -133,10 +142,8 @@ if(!session || !session?.user){
       </div>
       </section>
     </>
-  );}
-else{
-    router.push("/dashboard");
-}
+  );
+
 }
 
 export default SigninPage;

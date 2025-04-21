@@ -28,7 +28,7 @@ const SignupPage = () => {
   }
 
   return (<>
-    <section className=" flex bg-white w-full text-gray-600 h-screen justify-center items-center">
+    <section className=" flex w-full text-gray-600 h-screen justify-center pt-[8%]">
       <div className="flex flex-col w-[40rem] items-center">
       <h1 className="text-4xl font-semibold text-gray-700">Mot de passe oublié</h1>
       <h4 className="text-sm text-gray-500">Already have an account? 

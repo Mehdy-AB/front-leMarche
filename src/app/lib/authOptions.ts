@@ -1,4 +1,5 @@
 import CredentialsProvider from "next-auth/providers/credentials";
+import { loginSchema, emailSchema, phoneSchema, nameSchema } from "./validation/all.schema";
 export const authOptions = {
  
  
@@ -7,75 +8,37 @@ export const authOptions = {
         name: "Credentials",
         
         credentials: {
-          username: { label: "username", type: "text", placeholder: "jsmith" },
+          identifier: { label: "identifier", type: "text", placeholder: "jsmith" },
           password: { label: "password", type: "password" },
-          loginMod: { label: "loginMod", type: "text", placeholder: "username" },
         },
         async authorize(credentials, req) {
-          if (!credentials?.username || !credentials.password || !credentials.loginMod) {
+          if (!credentials?.identifier || !credentials.password) {
             return null;
           }
-          try{
-            if (credentials.loginMod === "phone") {
-            const res = await fetch(process.env.Backend_URL + "/user/auth/loginWithPhone", {
-              method: "POST",
-              body: JSON.stringify({
-                phone: credentials.username,
-                password: credentials.password,
-              }),
-              headers: {
-                "Content-Type": "application/json",
-              },
-            });
-            if (!res.ok) {
-              return null;
-            }
-    
-            const user = await res.json();
-            return user;
-
-          }else if (credentials.loginMod === "email") {
-            const res = await fetch(process.env.Backend_URL + "/user/auth/loginWithEmail", {
-              method: "POST",
-              body: JSON.stringify({
-                email: credentials.username,
-                password: credentials.password,
-              }),
-              headers: {
-                "Content-Type": "application/json",
-              },
-            });
-            if (!res.ok) {
-              return null;
-            }
-    
-            const user = await res.json();
-            return user;
-
-          } else {
-            const res = await fetch(process.env.Backend_URL + "/user/auth/loginWithUserName", {
-              method: "POST",
-              body: JSON.stringify({
-                username: credentials.username,
-                password: credentials.password,
-              }),
-              headers: {
-                "Content-Type": "application/json",
-              },
-            });
-            console.log(res)
-            if (!res.ok) {
-              return null;
-            }
-    
-            const user = await res.json();
-            return user;
-
-          }
-          }catch(error:any){
-            console.log(error.message)
-            return null;
-          }
+          const isValidBody = loginSchema.safeParse(credentials);
+                if(!isValidBody.success){
+                  return null;
+                }
+                let type: 'loginWithPhone' | 'loginWithEmail' | 'loginWithUserName' = 'loginWithUserName' 
+                  
+                if (emailSchema.safeParse(isValidBody.data.identifier).success){ type = 'loginWithEmail'}
+                else if (phoneSchema.safeParse(isValidBody.data.identifier).success) type = 'loginWithPhone'
+                else if (nameSchema.safeParse(isValidBody.data.identifier).success) type = 'loginWithUserName'
+                
+                const res = await fetch(`${process.env.Backend_URL}/user/auth/${type}`,
+                  {   
+                      method: 'POST',
+                      headers: {
+                          'Content-Type': 'application/json',
+                      },
+                      body:JSON.stringify(isValidBody.data)
+                  }
+                );
+                const data = await res.json();
+                if(data.error){
+                  return null
+                }
+              return data;
         },
       }),
     ],

@@ -59,14 +59,35 @@ export const companyDtoSchema = z.object({
 });
 
 // User DTO
+export const nameSchema = z
+  .string({message:'field must be string'})
+  .min(3,{message:'field at least 3 char'})
+  .max(20,{message:'field at max 20 char'})
+  .regex(/^[a-zA-Z_]+[a-zA-Z0-9_]$/, 'Only letters, numbers, underscores allowed')
+
+export const usernameSchemaObject = z.object({
+  username:nameSchema
+})
+  
 export const userDtoSchema = z.object({
   company: companyDtoSchema.optional(),
-  fullName: z.string().min(3).max(30),
-  username: z.string().min(3).max(30),
+  firstName: nameSchema,
+  lastName: nameSchema,
+  username: nameSchema,
   userType: z.enum(["INDIVIDUAL", "PROFESSIONAL"]),
   phone: z.string().min(10).max(15).regex(/^\d+$/),
   token: z.string().jwt(),
-  password: z.string().min(8).max(30),
+  password: z.string().min(8).max(30).refine(
+    (val) =>
+      /[A-Z]/.test(val) && // At least one uppercase letter
+      /[a-z]/.test(val) && // At least one lowercase letter
+      /\d/.test(val) && // At least one number
+      /[!@#$%^&*(),.?":{}|<>]/.test(val), // At least one special character
+    {
+      message:
+        'Password must include at least one uppercase letter, one lowercase letter, one number, and one special character',
+    }
+  ),
   passwordConfirmation: z.string().min(8).max(30),
 }).refine((data)=>data.password===data.passwordConfirmation,{
   message:'password not match',
@@ -91,11 +112,7 @@ export const emailSchema = z.string().email()
 export const phoneSchema = z
   .string()
   .regex(/^[0-9]{10,15}$/, 'Invalid phone number')
-export const usernameSchema = z
-  .string()
-  .min(3)
-  .max(20)
-  .regex(/^[a-zA-Z_]+[a-zA-Z0-9_]$/, 'Only letters, numbers, underscores allowed')
+
 
 // Union of the three possibilities
 export const loginSchema = z.object({
@@ -106,7 +123,7 @@ export const loginSchema = z.object({
       (val) =>
         emailSchema.safeParse(val).success ||
         phoneSchema.safeParse(val).success ||
-        usernameSchema.safeParse(val).success,
+        nameSchema.safeParse(val).success,
       {
         message: 'Must be a valid email, username, or phone number',
       }
@@ -114,17 +131,6 @@ export const loginSchema = z.object({
   password: z
     .string()
     .min(8, 'Password is required')
-    .refine(
-      (val) =>
-        /[A-Z]/.test(val) && // At least one uppercase letter
-        /[a-z]/.test(val) && // At least one lowercase letter
-        /\d/.test(val) && // At least one number
-        /[!@#$%^&*(),.?":{}|<>]/.test(val), // At least one special character
-      {
-        message:
-          'Password must include at least one uppercase letter, one lowercase letter, one number, and one special character',
-      }
-    ),
 });
 
 export type LoginDto = z.infer<typeof loginSchema>
@@ -132,6 +138,8 @@ export type LoginDto = z.infer<typeof loginSchema>
 export type UserDto = z.infer<typeof userDtoSchema>;
 export type CompanyDto = z.infer<typeof companyDtoSchema>;
 export type SendCodeDto = z.infer<typeof sendCodeDtoSchema>;
+
+//!--------------------------------------------------------------------------------------
 
 export const createAdAttributeSchema = z.object({
     attributeId: z.number().min(0),

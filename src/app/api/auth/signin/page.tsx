@@ -1,11 +1,12 @@
 "use client"
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { emailSchema, LoginDto, loginSchema, phoneSchema, usernameSchema } from "@/app/lib/validation/all.schema";
+import { emailSchema, LoginDto, loginSchema, phoneSchema, nameSchema } from "@/app/lib/validation/all.schema";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import LineLoader from "@/app/lib/loaders/LineLoader";
 
 const SignupPage = () => {
   const {
@@ -14,48 +15,38 @@ const SignupPage = () => {
      setError,
      formState: { errors,isSubmitting },
    } = useForm<LoginDto>({resolver:zodResolver(loginSchema)})
-
-  const route = useRouter();
   const [showPassword,setShowPassword]=useState(false);
-  const onSubmit = async (data: LoginDto) => {
-    const { identifier } = data
 
-    const isEmail = emailSchema.safeParse(identifier).success
-    const isPhone = phoneSchema.safeParse(identifier).success
-    const isUsername = usernameSchema.safeParse(identifier).success
-  
-    let type: 'email' | 'phone' | 'username' = 'username' // default
-  
-    if (isEmail) type = 'email'
-    else if (isPhone) type = 'phone'
-    else if (isUsername) type = 'username'
-    console.log(type)
-    // axiosGhost.post('/auth/register/sendCode',data).then(res=>{
-    //   if(res.data.error){
-    //     setError('email', { message: res.data.message })
-    //     return;
-    //   }
-    //   setEmail(data.email)
-    //   setEtape(etape + 1)
-    // }).catch(e=>{
-    //   setError('email', { message: e.response.data.error || 'Email is invalide' })
-    // })
-    // await signIn("credentials", {
-    //   username: data.credentials,
-    //   password: data.password,
-    //   redirect: true,
-    //   callbackUrl: "/dashboard",
-    // }).then((result) => {
-    //   if (result?.error) console.error(result.error);
-    // });
+  const { data: session } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+      if (session) {
+        router.push("/");
+      }
+    }, [session]);
+
+
+    
+  const onSubmit = async (data: LoginDto) => {
+    
+    await signIn("credentials", {
+      identifier: data.identifier,
+      password: data.password,
+      redirect: false,
+      callbackUrl: "/",
+    }).then((result) => {
+      if (!result?.ok) setError('password',{message:'Email & password not match'});
+      else router.push('/')
+    });
   }
 
   return (<>
-    <section className=" flex bg-white w-full text-gray-600 h-screen justify-center items-center">
+    <section className=" flex w-full text-gray-600 h-screen justify-center pt-[8%]">
       <div className="flex flex-col w-[40rem] items-center">
       <h1 className="text-4xl font-semibold text-gray-700">Sign in account</h1>
       <h4 className="text-sm text-gray-500">Don't have an account? 
-        <a className="underline cursor-pointer" onClick={()=>{route.push('/api/auth/signup')}}> SignUp</a>
+        <a className="underline cursor-pointer" onClick={()=>{router.push('/api/auth/signup')}}> SignUp</a>
       </h4>
         
       
@@ -108,7 +99,7 @@ const SignupPage = () => {
                           {errors.password.message}
                         </span>
                       )}
-                      <span className="mt-1  text-xs underline cursor-pointer"  onClick={()=>{route.push('/api/auth/forget-password')}}>Mot de passe oublié</span>
+                      <span className="mt-1  text-xs underline cursor-pointer"  onClick={()=>{router.push('/api/auth/forget-password')}}>Mot de passe oublié</span>
                     <button type="submit" className="bg-orange-400 rounded-4xl py-3 rounded-full mt-6 font-semibold text-white">Sign in</button>
                   </form>
                   <div className="grid grid-cols-11 items-center mt-16">
