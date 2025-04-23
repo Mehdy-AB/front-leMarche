@@ -4,9 +4,9 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(req: NextRequest) {
     try {
       const url = new URL(req.url);
-      const id = url.searchParams.get('id');
+      const name = url.searchParams.get('name');
   
-      const res = await fetch(`${process.env.Backend_URL}/ghost/getCategoryById/${id}`);
+      const res = await fetch(`${process.env.Backend_URL}/ghost/getCategoryByname/${name}`);
       const data = await res.json();
       return NextResponse.json(data);
     } catch (err: any) {

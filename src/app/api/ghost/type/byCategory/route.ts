@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// app/api/ghost/type/route.ts
+// app/api/ghost/category/[id]/route.ts
 export async function GET(req: NextRequest) {
     try {
       const url = new URL(req.url);
-      const name = url.searchParams.get('name');
-  
-      const res = await fetch(`${process.env.Backend_URL}/ghost/gettypes/${name}`);
+      const category = url.searchParams.get('category');
+      const type = url.searchParams.get('type');
+
+      const res = await fetch(`${process.env.Backend_URL}/ghost/getCategoryByname/${category}/${type}`);
       const data = await res.json();
       return NextResponse.json(data);
     } catch (err: any) {

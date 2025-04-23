@@ -48,6 +48,12 @@ export const filterDtoSchema = z.object({
   tri: z.enum(["plus recent", "plus cher", "moins cher", "plus ancien"]),
 });
 
+export const filterEtape2Schema = z.object({
+  
+  locationIds: z.array(locationSchema).optional(),
+  brand:z.array(brandSchema).optional(),
+});
+export type filterEtape2Dto = z.infer<typeof filterEtape2Schema>;
 export type FilterDto = z.infer<typeof filterDtoSchema>;
 //?----------------------------------------------------
 

@@ -11,6 +11,7 @@ export default {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        colorOne:'#fb923c'
       },
       fontSize: {
         'tiny': '0.625rem', 

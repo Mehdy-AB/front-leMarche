@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 // app/api/ghost/type/[id]/route.ts
 export async function GET(req: NextRequest) {
     try {
-      const id = new URL(req.url).searchParams.get('id');
-      const res = await fetch(`${process.env.Backend_URL}/ghost/gettype/${id}`);
+      const name = new URL(req.url).searchParams.get('name');
+      const res = await fetch(`${process.env.Backend_URL}/ghost/gettype/${name}`);
       const data = await res.json();
       return NextResponse.json(data);
     } catch (err: any) {
