@@ -1,8 +1,9 @@
+import Loader from "@/app/lib/loaders/Loader";
 import { getCities, getDepartments } from "@/app/lib/req/ghost";
 import { brands, region ,department,cities} from "@/app/lib/types/types";
 import { filterEtape2Dto } from "@/app/lib/validation/all.schema";
 import DropDown from "@/components/outher/DropDown";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export const BrandAndlocation=({
     brands,
@@ -15,7 +16,9 @@ export const BrandAndlocation=({
     goBack:()=>void,
     submit:(data:filterEtape2Dto)=>void
 })=>{
+    
     const [locationViwe,setlocationViwe] =useState<'region'|'departments'|'cities'>('region')
+    const [loaderDPlocation,setLoaderDPLocation] =useState(false)
     const [filteredBrand,setFilteredBrand] =useState(brands)
     const [selectedBrand,setSelectedBrand] =useState<brands>([])
     const [selectedLocation,setSelectedLocation] =useState<{id:number,name:string,type:"region"|"city"|"department"}[]>([])
@@ -23,16 +26,22 @@ export const BrandAndlocation=({
     const [locationDropDown,setLocationDropDown] =useState(false)
     const [department,setDepartment] = useState<department>([]);
     const [cities,setCities] = useState<cities>([]);
+
     const  getCity=async (departmentId:number)=>{
+      setLoaderDPLocation(true)
       const cities = await getCities(departmentId)
       if(cities)
       setCities(cities)
+      setLoaderDPLocation(false)
+
     }
 
     const  getDep=async (regionId:number)=>{
+      setLoaderDPLocation(true)
       const department = await getDepartments(regionId)
       if(department)
       setDepartment(department)
+      setLoaderDPLocation(false)
     }
     const filterBrand=(input:string)=>{
         setFilteredBrand(brands.filter(brand => brand.name.toLowerCase().includes(input.toLowerCase())));
@@ -64,7 +73,7 @@ export const BrandAndlocation=({
         }</div>
         {locationDropDown&&<DropDown notEff={['locationDropDown']} setIsShow={(data:boolean)=>{setLocationDropDown(data);setlocationViwe('region')}}>
             <div className=" absolute py-2 bg-white w-full flex flex-col max-h-44 overflow-auto border-gray-300 border rounded-lg top-[50px] px-1 shadow-lg">
-                {locationViwe==='region'&&region.map((reg, index) => (
+                {!loaderDPlocation?(<>{locationViwe==='region'&&region.map((reg, index) => (
                         <span key={index} className=" grid grid-cols-2 group rounded-lg px-3 py-1 w-full hover:bg-gray-100 cursor-pointer"
                         onClick={()=>{setSelectedLocation((prv)=>[...prv.filter((r)=>r.id!==reg.id),{type:'region',name:reg.name,id:reg.id}]);setLocationDropDown(false);setlocationViwe('region')}}>
                             
@@ -97,7 +106,9 @@ export const BrandAndlocation=({
                         onClick={()=>{setSelectedLocation((prv)=>[...prv.filter((r)=>(r.id!==city.id&&r.type!=='city')),{type:'city',name:city.name,id:city.id}]);setLocationDropDown(false);setlocationViwe('region')}}>
                             <span className="text-sm group-hover:text-colorOne group-hover:underline justify-start">{city.name}</span>
                         </span>
-                    ))}
+                    ))}</>):
+                (<Loader/>)
+                }
             </div>
         </DropDown>}
         </div>
