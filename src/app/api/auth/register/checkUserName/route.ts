@@ -1,4 +1,4 @@
-import { usernameSchemaObject } from "@/app/lib/validation/all.schema";
+import { usernameSchemaObject } from "@/lib/validation/all.schema";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {

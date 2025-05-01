@@ -2,11 +2,10 @@
 import { signIn, useSession } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { emailSchema, LoginDto, loginSchema, phoneSchema, nameSchema } from "@/app/lib/validation/all.schema";
+import { emailSchema, LoginDto, loginSchema, phoneSchema, nameSchema } from "@/lib/validation/all.schema";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import LineLoader from "@/app/lib/loaders/LineLoader";
 
 const SignupPage = () => {
   const {

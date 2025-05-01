@@ -3,8 +3,8 @@
 import { useEffect, useRef } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { OtpSchema, otpSchema } from '@/app/lib/validation/all.schema'
-import axiosGhost from '@/app/lib/req/axiosGhost'
+import { OtpSchema, otpSchema } from '@/lib/validation/all.schema'
+import axiosGhost from '@/lib/req/axiosGhost'
 
 export const OtpForm = ({
   etape,

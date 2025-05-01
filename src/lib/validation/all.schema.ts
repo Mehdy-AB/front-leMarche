@@ -1,0 +1,181 @@
+import { getToken } from "next-auth/jwt";
+import { z } from "zod";
+
+// brand
+export const brandSchema = z.object({
+  id: z.number().min(0),
+  modeles: z.array(z.number()).optional(),
+});
+
+// type
+export const typeSchema = z.object({
+  id: z.number().min(0),
+  brand: z.array(brandSchema).optional(),
+});
+
+// category
+export const categorySchema = z.object({
+  id: z.number().min(0),
+  type: z.array(typeSchema).optional(),
+});
+
+// locations
+export const locationSchema = z.object({
+  id: z.number().min(0),
+  type: z.enum(["region", "city", "department"]),
+});
+
+// AdAttributeDto
+export const adAttributeSchema = z.object({
+  attributeId: z.number(),
+  value: z.union([
+    z.array(z.number()),
+    z.object({
+      min: z.number(),
+      max: z.number(),
+    }),
+  ]),
+});
+
+// Main filterDto
+export const filterDtoSchema = z.object({
+  search: z.string().optional(),
+  minPrice: z.number().min(0).optional(),
+  maxPrice: z.number().max(10000000).optional(),
+  locationIds: z.array(locationSchema).optional(),
+  category: z.array(categorySchema),
+  attributes: z.array(adAttributeSchema).optional(),
+  tri: z.enum(["plus recent", "plus cher", "moins cher", "plus ancien"]),
+});
+
+export const filterEtape2Schema = z.object({
+  
+  locationIds: z.array(locationSchema).optional(),
+  brand:z.array(brandSchema).optional(),
+});
+export type filterEtape2Dto = z.infer<typeof filterEtape2Schema>;
+export type FilterDto = z.infer<typeof filterDtoSchema>;
+//?----------------------------------------------------
+
+// Company DTO
+export const companyDtoSchema = z.object({
+  name: z.string().min(4).max(30),
+  siret: z.string().length(14).regex(/^\d+$/),
+  address: z.string().max(100).optional(),
+});
+
+// User DTO
+export const nameSchema = z
+  .string({message:'field must be string'})
+  .min(3,{message:'field at least 3 char'})
+  .max(20,{message:'field at max 20 char'})
+  .regex(/^[a-zA-Z_]+[a-zA-Z0-9_]$/, 'Only letters, numbers, underscores allowed')
+
+export const usernameSchemaObject = z.object({
+  username:nameSchema
+})
+  
+export const userDtoSchema = z.object({
+  company: companyDtoSchema.optional(),
+  firstName: nameSchema,
+  lastName: nameSchema,
+  username: nameSchema,
+  userType: z.enum(["INDIVIDUAL", "PROFESSIONAL"]),
+  phone: z.string().min(10).max(15).regex(/^\d+$/),
+  token: z.string().jwt(),
+  password: z.string().min(8).max(30).refine(
+    (val) =>
+      /[A-Z]/.test(val) && // At least one uppercase letter
+      /[a-z]/.test(val) && // At least one lowercase letter
+      /\d/.test(val) && // At least one number
+      /[!@#$%^&*(),.?":{}|<>]/.test(val), // At least one special character
+    {
+      message:
+        'Password must include at least one uppercase letter, one lowercase letter, one number, and one special character',
+    }
+  ),
+  passwordConfirmation: z.string().min(8).max(30),
+}).refine((data)=>data.password===data.passwordConfirmation,{
+  message:'password not match',
+  path:['passwordConfirmation']
+});
+
+// SendCode DTO
+export const sendCodeDtoSchema = z.object({
+  email: z.string().email('Vérifiez l’adresse email, son format n’est pas valide.').min(5,'Vérifiez l’adresse email, son format n’est pas valide.').max(100,'Vérifiez l’adresse email, son format n’est pas valide.'),
+});
+export const otpSchema = z.object({
+    otp: z
+    .array(z.string().regex(/^\d$/, 'Must be a digit'))
+    .length(6, 'Code must have 6 digits'),
+    email: z.string().email().min(5).max(100),
+})
+
+export type OtpSchema = z.infer<typeof otpSchema>
+
+// Patterns
+export const emailSchema = z.string().email()
+export const phoneSchema = z
+  .string()
+  .regex(/^[0-9]{10,15}$/, 'Invalid phone number')
+
+
+// Union of the three possibilities
+export const loginSchema = z.object({
+  identifier: z
+    .string()
+    .min(3, 'Input required')
+    .refine(
+      (val) =>
+        emailSchema.safeParse(val).success ||
+        phoneSchema.safeParse(val).success ||
+        nameSchema.safeParse(val).success,
+      {
+        message: 'Must be a valid email, username, or phone number',
+      }
+    ),
+  password: z
+    .string()
+    .min(8, 'Password is required')
+});
+
+export type LoginDto = z.infer<typeof loginSchema>
+
+export type UserDto = z.infer<typeof userDtoSchema>;
+export type CompanyDto = z.infer<typeof companyDtoSchema>;
+export type SendCodeDto = z.infer<typeof sendCodeDtoSchema>;
+
+//!--------------------------------------------------------------------------------------
+
+export const createAdAttributeSchema = z.object({
+    attributeId: z.number().min(0),
+    attributeCollectionId: z.number().min(0),
+    value: z.any(),
+  });
+  
+  export const createAdsSchema = z.object({
+    title: z.string().min(1),
+    description: z.string().optional(),
+    price: z.number().int().min(0),
+    status: z.enum(['ACTIVE', 'SOLD', 'HIDDEN']),
+    images: z.array(z.string()),
+    videoid: z.number().optional(),
+    attributes: z.array(createAdAttributeSchema),
+    categoryId: z.number().min(0),
+    typeId: z.number().min(0),
+    brandId: z.number().min(0),
+    modelId: z.number().min(0),
+    locationId: z.number().min(0),
+  });
+  
+  export const messageSchema = z.object({
+    id: z.number().min(0),
+    content: z.string().min(1),
+  });
+  
+  export type MessageFormValues = z.infer<typeof messageSchema>;
+  // UpdateAdsDto is PartialType(CreateAdsDto)
+  export const updateAdsSchema = createAdsSchema.partial();
+  
+  export type CreateAdsFormValues = z.infer<typeof createAdsSchema>;
+  export type UpdateAdsFormValues = z.infer<typeof updateAdsSchema>;

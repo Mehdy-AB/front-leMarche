@@ -1,5 +1,5 @@
-import axiosGhost from "@/app/lib/req/axiosGhost";
-import {  UserDto, userDtoSchema } from "@/app/lib/validation/all.schema";
+import axiosGhost from "@/lib/req/axiosGhost";
+import {  UserDto, userDtoSchema } from "@/lib/validation/all.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";

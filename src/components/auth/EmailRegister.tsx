@@ -1,5 +1,5 @@
-import axiosGhost from "@/app/lib/req/axiosGhost";
-import { SendCodeDto, sendCodeDtoSchema } from "@/app/lib/validation/all.schema";
+import axiosGhost from "@/lib/req/axiosGhost";
+import { SendCodeDto, sendCodeDtoSchema } from "@/lib/validation/all.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 

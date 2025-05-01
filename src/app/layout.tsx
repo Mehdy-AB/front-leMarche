@@ -33,10 +33,14 @@ export default function RootLayout({
   return (
     <Providers>
     <html lang="en">
+      
       <body
-        className={`${poppins.variable}  antialiased`}
+        className={`${poppins.variable} flex items-center text-foreground w-full justify-center antialiased`}
       >
+        <main className="w-[80%]">
         {children}
+        </main>
+        
       </body>
     </html>
     </Providers>
