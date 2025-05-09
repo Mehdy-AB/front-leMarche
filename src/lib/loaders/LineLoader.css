@@ -3,6 +3,7 @@
     height: 8px;
     position: fixed;
     top:0;
+    left:0;
     overflow: hidden;
     background-color: #ddd;
 }
@@ -13,7 +14,7 @@
     left: -40%;
     height: 8px;
     width: 40%;
-    background-color: coral;
+    background-color: var(--colorOne);
     animation: lineAnim 2s ease-in infinite;
 }
 

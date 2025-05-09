@@ -1,4 +1,3 @@
-import { getToken } from "next-auth/jwt";
 import { z } from "zod";
 
 // brand
@@ -13,43 +12,40 @@ export const typeSchema = z.object({
   brand: z.array(brandSchema).optional(),
 });
 
-// category
-export const categorySchema = z.object({
-  id: z.number().min(0),
-  type: z.array(typeSchema).optional(),
-});
-
 // locations
 export const locationSchema = z.object({
   id: z.number().min(0),
   type: z.enum(["region", "city", "department"]),
+  name:z.string()
 });
 
 // AdAttributeDto
 export const adAttributeSchema = z.object({
   attributeId: z.number(),
   value: z.union([
-    z.array(z.number()),
+    z.array(z.number()).optional(),
     z.object({
-      min: z.number(),
-      max: z.number(),
+      min: z
+    .preprocess((val) => (isNaN(val as number) ? undefined : val), z.number().nullable().optional()),
+  max: z
+    .preprocess((val) => (isNaN(val as number) ? undefined : val), z.number().nullable().optional()),
     }),
-  ]),
+  ])  
 });
 
 // Main filterDto
 export const filterDtoSchema = z.object({
   search: z.string().optional(),
-  minPrice: z.number().min(0).optional(),
-  maxPrice: z.number().max(10000000).optional(),
+  minPrice: z.preprocess((val) => (isNaN(val as number) ? undefined : val), z.number().min(0).nullable().optional()),
+  maxPrice:  z.preprocess((val) => (isNaN(val as number) ? undefined : val), z.number().max(100000000000).nullable().optional()),
   locationIds: z.array(locationSchema).optional(),
-  category: z.array(categorySchema),
+  type: typeSchema.optional(),
   attributes: z.array(adAttributeSchema).optional(),
-  tri: z.enum(["plus recent", "plus cher", "moins cher", "plus ancien"]),
+  tri: z.enum(["plus recent", "plus cher", "moins cher", "plus ancien"]).optional(),
+  page:z.number().min(0).default(0).optional()
 });
 
 export const filterEtape2Schema = z.object({
-  
   locationIds: z.array(locationSchema).optional(),
   brand:z.array(brandSchema).optional(),
 });
@@ -147,26 +143,88 @@ export type SendCodeDto = z.infer<typeof sendCodeDtoSchema>;
 
 //!--------------------------------------------------------------------------------------
 
-export const createAdAttributeSchema = z.object({
-    attributeId: z.number().min(0),
-    attributeCollectionId: z.number().min(0),
-    value: z.any(),
-  });
-  
-  export const createAdsSchema = z.object({
-    title: z.string().min(1),
-    description: z.string().optional(),
-    price: z.number().int().min(0),
-    status: z.enum(['ACTIVE', 'SOLD', 'HIDDEN']),
-    images: z.array(z.string()),
+
+export const createAdsSchema = z
+  .object({
+    title: z
+      .string()
+      .min(6, { message: 'Le titre doit contenir au moins 6 caractères.' }),
+      
+    description: z
+      .string()
+      .min(20, { message: 'La description doit contenir au moins 20 caractères.' }),
+
+    price: z
+      .number({ invalid_type_error: 'Le prix doit être un nombre.' })
+      .int({ message: 'Le prix doit être un entier.' })
+      .min(100, { message: 'Le prix doit être au moins de 100 Euro.' })
+      .max(10000000000, { message: 'Le prix ne doit pas dépasser 1 000 000 000 Euro.' }),
+
+    status: z.enum(['Active', 'Brouillon'], {
+      errorMap: () => ({ message: 'Le statut sélectionné est invalide.' }),
+    }),
+
+    images: z
+      .array(
+        z.string()
+      )
+      .min(3, { message: 'Vous devez ajouter au moins 3 images.' })
+      .max(10, { message: 'Vous ne pouvez pas ajouter plus de 10 images.' }),
+
     videoid: z.number().optional(),
-    attributes: z.array(createAdAttributeSchema),
-    categoryId: z.number().min(0),
-    typeId: z.number().min(0),
-    brandId: z.number().min(0),
-    modelId: z.number().min(0),
-    locationId: z.number().min(0),
+
+    categoryId: z
+      .number({ invalid_type_error: 'La catégorie est requise.' })
+      .min(0, { message: 'Veuillez sélectionner une catégorie.' }),
+
+    typeId: z
+      .number({ invalid_type_error: 'Le type est requis.' })
+      .min(0, { message: 'Veuillez sélectionner un type.' }),
+
+    brandId: z
+      .number({ invalid_type_error: 'La marque est requise.' })
+      .min(0, { message: 'Veuillez sélectionner une marque.' }),
+
+    modelId: z
+      .number({ invalid_type_error: 'Le modèle est requis.' })
+      .min(0, { message: 'Veuillez sélectionner un modèle.' }),
+
+    locationId: z
+      .number({ invalid_type_error: 'La localisation est requise.' })
+      .min(0, { message: 'Veuillez sélectionner une localisation.' }),
+
+    attributes: z
+      .array(
+        z.object({
+          attributeId: z.number(),
+          name: z.string(),
+          attributeCollectionId: z.number(),
+          value:  z.number().optional(),
+          required: z.boolean().optional(),
+        })
+      )
+      .optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.attributes) return;
+
+    data.attributes.forEach((attr, index) => {
+      if (attr.required) {
+        const isEmpty =
+          attr.value === undefined ||
+          attr.value === null 
+        if (isEmpty) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `« ${attr.name} »`,
+            path: ['attributes', index, 'value'],
+          });
+        }
+      }
+    });
   });
+
+
   
   export const messageSchema = z.object({
     id: z.number().min(0),
@@ -175,7 +233,7 @@ export const createAdAttributeSchema = z.object({
   
   export type MessageFormValues = z.infer<typeof messageSchema>;
   // UpdateAdsDto is PartialType(CreateAdsDto)
-  export const updateAdsSchema = createAdsSchema.partial();
+ // export const updateAdsSchema = createAdsSchema.partial();
   
   export type CreateAdsFormValues = z.infer<typeof createAdsSchema>;
-  export type UpdateAdsFormValues = z.infer<typeof updateAdsSchema>;
+  //export type UpdateAdsFormValues = z.infer<typeof updateAdsSchema>;

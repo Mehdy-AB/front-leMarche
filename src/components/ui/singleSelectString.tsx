@@ -1,7 +1,6 @@
 'use client';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useState } from 'react';
   
   type SingleSelectProps = {
     options: string[];
@@ -11,7 +10,6 @@ import { useState } from 'react';
   };
 
 export default function singleSelectString({ options, selected, onChange, placeholder = "Select options" }: SingleSelectProps) {
-    const [expandItems, setExpandItems] = useState(false);
   return (
     <div className='flex flex-col w-full'>
         <Select value={selected||undefined} onValueChange={(value) => {onChange(value)}}>

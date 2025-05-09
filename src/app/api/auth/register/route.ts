@@ -23,10 +23,10 @@ export async function POST(req: NextRequest) {
       if(data.error){
         return NextResponse.json({ error: 'validation failde' }, { status: 400 });
       }
-        
 
       return NextResponse.json(data);
     } catch (err: any) {
+
       return NextResponse.json({ error: err.message }, { status: 500 });
     }
   }

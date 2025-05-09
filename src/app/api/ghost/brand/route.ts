@@ -8,9 +8,9 @@ export async function GET(req: NextRequest) {
       const id = url.searchParams.get('id');
       let Burl:string;
       if (id) {
-        Burl = `${process.env.Backend_URL}/ghost/getCategoryByid/${id}`;
+        Burl = `${process.env.Backend_URL}/ghost/getBrandById/${id}`;
       } else if (name) {
-        Burl = `${process.env.Backend_URL}/ghost/getCategoryByname/${name}`;
+        Burl = `${process.env.Backend_URL}/ghost/getBrandByName/${name}`;
       } else {
         return NextResponse.json({ error: "No id or name provided" }, { status: 400 });
       }

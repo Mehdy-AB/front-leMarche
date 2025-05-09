@@ -1,4 +1,4 @@
-import { Attribute, brands, categories, category, cities, department, modeles, region, types } from "../types/types";
+import { Ads, Attribute, brands,User, categories, category, cities, department, modeles, OneAdType, region, types } from "../types/types";
 import { FilterDto } from "../validation/all.schema";
 import axiosGhost from "./axiosGhost";
 
@@ -47,6 +47,15 @@ export async function getBrandsByid(typeid: number):Promise<brands|null> {
   }
 }
 
+export async function getcategoryTypeIdsBytype(typename: string):Promise<{id:number,categoryId:number}|null> { 
+  try {
+    const res = await axiosGhost.get(`/ghost/type/one?name=${typename}`);
+    return res.data;
+  } catch (err) {
+    return null;
+  }
+}
+
 export async function getBrandsByname(typename: string):Promise<brands|null> { 
   try {
     const res = await axiosGhost.get(`/ghost/type?name=${typename}`);
@@ -56,7 +65,7 @@ export async function getBrandsByname(typename: string):Promise<brands|null> {
   }
 }
 
-export async function getModelesByid(typeid: number):Promise<modeles|null> {
+export async function getModelesByid(typeid: number[]):Promise<modeles|null> {
   try {
     const res = await axiosGhost.get(`/ghost/brand?id=${typeid}`);
     return res.data;
@@ -65,7 +74,7 @@ export async function getModelesByid(typeid: number):Promise<modeles|null> {
   }
 }
 
-export async function getModelesByname(typename: string):Promise<modeles|null> { 
+export async function getModelesByname(typename: string[]):Promise<modeles|null> { 
   try {
     const res = await axiosGhost.get(`/ghost/brand?name=${typename}`);
     return res.data;
@@ -119,11 +128,12 @@ export async function getCities(departmentId: number):Promise<cities|null>  {
   }
 }
 
-export async function getUser(id: number) {
+export async function getUser(id: number):Promise<User|null> {
   try {
-    const res = await axiosGhost.get(`/ghost/user/${id}`);
+    const res = await axiosGhost.get(`/ghost/user?id=${id}`);
     return res.data;
   } catch (err) {
+    console.log(err)
     return null;
   }
 }
@@ -148,32 +158,29 @@ export async function getUserFollowing(id: number, take: number, skip: number) {
   }
 }
 
-export async function getUserAds(id: number, filter: FilterDto, take: number, skip: number) {
+export async function getUserAds(id: number, filter: FilterDto, take: number, skip: number):Promise<Ads|null> {
   try {
-    const res = await axiosGhost.post(`/ghost/user/ads?id=${id}&take=${take}&skip=${skip}`, { data: filter });
+    const res = await axiosGhost.post(`/ghost/user/ads?id=${id}&take=${take}&skip=${skip*32}`, filter );
     return res.data;
   } catch (err) {
-    console.error('getUserAds:', err);
     return null;
   }
 }
 
-export async function getAd(id: number) {
+export async function getAd(id: number):Promise<OneAdType|null> {
   try {
     const res = await axiosGhost.get(`/ghost/ad?id=${id}`);
     return res.data;
   } catch (err) {
-    console.error('getAd:', err);
     return null;
   }
 }
 
-export async function searchAds(filter: FilterDto, take: number, skip: number) {
+export async function searchAds(filter: FilterDto|null, take: number,skip:number):Promise<Ads|null> {
   try {
-    const res = await axiosGhost.post(`/ghost/ad/search?take=${take}&skip=${skip}`, { data: filter });
+    const res = await axiosGhost.post(`/ghost/ad/search?take=${take}&skip=${skip*32}`, filter );
     return res.data;
   } catch (err) {
-    console.error('searchAds:', err);
     return null;
   }
 }

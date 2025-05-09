@@ -1,18 +1,21 @@
 'use client';
 
-import { Input } from '@/components/ui/input';
+import { InputForm } from '@/components/ui/inputForm';
 import { cn } from '@/lib/utils';
 
 type SingleInputProps = {
   label: string;
   placeholder?: string;
-  value: string;
+  index: number;
   unit?: string|null;
+  max?: number;
+  min?: number;
+  step?: number;
   onChange: (value: string) => void;
   type?: 'text' | 'number' | 'email' | 'password';
 };
 
-export default function SingleInput({ placeholder, value,unit, onChange, type = 'number' }: SingleInputProps) {
+export default function SingleInput({ placeholder,max,min,step, index,unit, type = 'number' }: SingleInputProps) {
   return (
     <div className="flex flex-col relative gap-2 w-full">
       {unit && (
@@ -20,12 +23,13 @@ export default function SingleInput({ placeholder, value,unit, onChange, type = 
                 {unit}
               </div>
             )}
-      <Input
+      <InputForm
         type={type}
-        min={0}
+        index={index}
+        min={min||0}
+        max={max||undefined}
+        step={step||undefined}
         placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
         className={cn(
           "w-full border border-gray-300 rounded-md py-3 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500",
           unit ? "pr-12":'pl-4'

@@ -1,5 +1,6 @@
 import axiosClient from './axiosClient';
-import { CreateAdsFormValues, FilterDto, MessageFormValues, UpdateAdsFormValues } from '../validation/all.schema';
+import { CreateAdsFormValues, FilterDto, MessageFormValues } from '../validation/all.schema';
+import { MesAds } from '../types/types';
 export async function createAd(data: CreateAdsFormValues) {
   try {
     const res = await axiosClient.post('/user/ad', { data });
@@ -10,15 +11,15 @@ export async function createAd(data: CreateAdsFormValues) {
   }
 }
 
-export async function updateAd(adId: number, data: UpdateAdsFormValues) {
-  try {
-    const res = await axiosClient.put(`/user/ad?id=${adId}`, { data });
-    return res.data;
-  } catch (err) {
-    console.error('updateAd:', err);
-    return null;
-  }
-}
+// export async function updateAd(adId: number, data: UpdateAdsFormValues) {
+//   try {
+//     const res = await axiosClient.put(`/user/ad?id=${adId}`, { data });
+//     return res.data;
+//   } catch (err) {
+//     console.error('updateAd:', err);
+//     return null;
+//   }
+// }
 
 export async function deleteAd(adId: number) {
   try {
@@ -30,13 +31,12 @@ export async function deleteAd(adId: number) {
   }
 }
 
-export async function getMyAds(filter: FilterDto, take: number, skip: number) {
+export async function getMyAds(filter: FilterDto, take: number, skip: number):Promise<MesAds|[]> {
   try {
-    const res = await axiosClient.post(`/user/ad/my?take=${take}&skip=${skip}`, { data: filter });
+    const res = await axiosClient.post(`/user/ad/my?take=${take}&skip=${skip}`,  filter );
     return res.data;
   } catch (err) {
-    console.error('getMyAds:', err);
-    return null;
+    return [];
   }
 }
 
@@ -52,30 +52,27 @@ export async function getMyAdById(adId: number, take: number, skip: number) {
 
 export async function favoriteAd(adId: number) {
   try {
-    const res = await axiosClient.post(`/user/favorite?id=${adId}`);
+    const res = await axiosClient.post(`/user/favorites?id=${adId}`);
     return res.data;
   } catch (err) {
-    console.error('favoriteAd:', err);
     return null;
   }
 }
 
 export async function unfavoriteAd(adId: number) {
   try {
-    const res = await axiosClient.delete(`/user/favorite?id=${adId}`);
+    const res = await axiosClient.delete(`/user/favorites?id=${adId}`);
     return res.data;
   } catch (err) {
-    console.error('unfavoriteAd:', err);
     return null;
   }
 }
 
 export async function getFavorites(take: number, skip: number) {
   try {
-    const res = await axiosClient.get(`/user/favorite/list?take=${take}&skip=${skip}`);
+    const res = await axiosClient.get(`/user/favorites/list?take=${take}&skip=${skip}`);
     return res.data;
   } catch (err) {
-    console.error('getFavorites:', err);
     return null;
   }
 }
@@ -85,7 +82,6 @@ export async function followUser(userId: number) {
     const res = await axiosClient.post(`/user/follow?id=${userId}`);
     return res.data;
   } catch (err) {
-    console.error('followUser:', err);
     return null;
   }
 }
@@ -95,7 +91,6 @@ export async function unfollowUser(userId: number) {
     const res = await axiosClient.delete(`/user/follow?id=${userId}`);
     return res.data;
   } catch (err) {
-    console.error('unfollowUser:', err);
     return null;
   }
 }

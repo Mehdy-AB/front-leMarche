@@ -3,23 +3,21 @@ import SingleSelect from "../ui/singleSelect";
 import { useEffect, useState } from "react";
 import { getAllCategories, getBrandsByid, getModelesByid, getTypesByid } from "@/lib/req/ghost";
 import Loader from "@/lib/loaders/Loader";
+import { useFormContext } from "react-hook-form";
+import { CreateAdsFormValues } from "@/lib/validation/all.schema";
 
-export default function Category({categorieId,setCategorieId,typeId,setTypeId,brandId,setBrandId,modeleId,setModeleId}:{
-    categorieId:number,
-    setCategorieId:(CategorieId:number)=>void,
-    typeId:number,
-    setTypeId:(typeId:number)=>void,
-    brandId:number,
-    setBrandId:(brandId:number)=>void,
-    modeleId:number,
-    setModeleId:(modeleId:number)=>void
-}
-) {
+export default function Category() {
+    const {watch,setValue,clearErrors} = useFormContext<CreateAdsFormValues>();
     const [categories,setCategories] = useState<categories>([]);
     const [types,setTypes] = useState<types>([]);
     const [brands,setBrands] = useState<brands>([]);
     const [modele,setModele] = useState<modeles>([]);
     const [isLoading,setIsLoading] = useState(true);
+    const [isLoadingT,setIsLoadingT] = useState(0);
+    const categorieId = watch('categoryId');
+    const typeId = watch('typeId');
+    const brandId = watch('brandId');
+    const modeleId = watch('modelId');
     useEffect(() => {
             const fetchdata= async () => {
                 const fetchCategories= async () => {
@@ -31,29 +29,32 @@ export default function Category({categorieId,setCategorieId,typeId,setTypeId,br
             };
             fetchdata().then(()=>{
                     setIsLoading(false);
-                    setCategorieId(1)
             })
+            setValue('categoryId',0)
         }
+        
         , []);
 
     useEffect(() => {
+        setIsLoadingT(1)
         setTypes([])
         setBrands([])
         setModele([])
-        console.log(categorieId)
         const fetchTypes = async () => {
             if(categorieId){
                 const types = await getTypesByid(categorieId);
                 if(types)
                 setTypes(types)
-                console.log(types)
+                setIsLoadingT(0)
             }
         };
         fetchTypes();
+        
         }
         , [categorieId]);
     
     useEffect(() => {
+        setIsLoadingT(2)
         setBrands([])
         setModele([])
         const fetchBrands = async () => {
@@ -61,6 +62,7 @@ export default function Category({categorieId,setCategorieId,typeId,setTypeId,br
                 const brands = await getBrandsByid(typeId);
                 if(brands)
                 setBrands(brands)
+                setIsLoadingT(0)
             }
         };
         fetchBrands();
@@ -68,12 +70,14 @@ export default function Category({categorieId,setCategorieId,typeId,setTypeId,br
         , [typeId]);
     
     useEffect(() => {
+        setIsLoadingT(3)
         setModele([])
         const fetchModele = async () => {
             if(brandId){
                 const modele = await getModelesByid(brandId);
                 if(modele)
                 setModele(modele)
+                setIsLoadingT(0)
             }
         };
         fetchModele();
@@ -87,43 +91,70 @@ export default function Category({categorieId,setCategorieId,typeId,setTypeId,br
             </div>
         )
     return (<>
-            <label className="block border-l-4 pl-1 border-colorOne font-medium text-gray-700 mb-1">Localisation</label>
+            <label className="block border-l-4 pl-1 border-colorOne font-medium text-gray-700 mb-1">Type</label>
             <label className="block text-sm font-medium text-gray-700 mb-1">Categories</label>
             <SingleSelect
                 options={categories.map((category) => ({
-                    id: category.id,name: category.name
+                    id: category.id, name: category.name
                 }))}
-                selected={categories.find((category) => category.id === categorieId)}
-                onChange={(selected) => setCategorieId(selected?.id || 0)}
+                selected={categorieId?{
+                    id: categorieId,
+                    name: categories.find((category) => category.id === categorieId)?.name || ""
+                }: null}
+                onChange={(selected) => {setValue('categoryId',selected?.id || 0);}}
                 placeholder={"Categories"}
             />
-            <label className="block text-sm font-medium text-gray-700 mb-1">Types</label>
-            <SingleSelect
-                options={types.map((type) => ({
-                    id: type.id,name: type.name
-                }))}
-                selected={types.find((type) => type.id === typeId)}
-                onChange={(selected) => setTypeId(selected?.id || 0)}
-                placeholder={"Types"}
-            />
-            <label className="block text-sm font-medium text-gray-700 mb-1">Marques</label>
-            <SingleSelect
+            {!!categorieId&&(<><label className="block text-sm font-medium text-gray-700 mb-1">Types</label>
+                {isLoadingT===1?
+                <span className="flex justify-center items-center py-1">
+                    <Loader/>
+                </span>
+                :<SingleSelect
+                    options={types.map((type) => ({
+                        id: type.id, name: type.name
+                    }))}
+                    selected={typeId?{
+                        id: typeId,
+                        name: types.find((type) => type.id === typeId)?.name || ""
+                    }:null}
+                    onChange={(selected) => {setValue('typeId',selected?.id || 0)}}
+                    placeholder={"Types"}
+                />}</>)}
+            {typeId&&<><label className="block text-sm font-medium text-gray-700 mb-1">Marques</label>
+                {isLoadingT===2?
+            <span className="flex justify-center items-center py-1">
+                <Loader/>
+            </span>
+            :<SingleSelect
                 options={brands.map((brand) => ({
-                    id: brand.id,name: brand.name
+                    id: brand.id, name: brand.name
                 }))}
-                selected={brands.find((brand) => brand.id === brandId)}
-                onChange={(selected) => setBrandId(selected?.id || 0)}
+                selected={brandId?{
+                    id: brandId,
+                    name: brands.find((brand) => brand.id === brandId)?.name || ""
+                }:null}
+                onChange={(selected) => setValue('brandId',selected?.id || 0)}
                 placeholder={"Marques"}
-            />
-            <label className="block text-sm font-medium text-gray-700 mb-1">Modeles</label>
-            <SingleSelect
+            />}</>}
+            {brandId&&typeId&&categorieId&&<><label className="block text-sm font-medium text-gray-700 mb-1">Modeles</label>
+                {isLoadingT===3?
+            <span className="flex justify-center items-center py-1">
+                <Loader/>
+            </span>
+            :<SingleSelect
                 options={modele.map((model) => ({
                     id: model.id,name: model.name
                 }))}
-                selected={modele.find((model) => model.id === modeleId)}
-                onChange={(selected) => setModeleId(selected?.id || 0)}
+                selected={modeleId?{id:modeleId,name:modele.find((model) => model.id === modeleId)?.name || ""}:null}
+                onChange={(selected) => {
+                    setValue('modelId', selected?.id || 0);
+                    clearErrors('modelId');
+                    clearErrors('brandId');
+                    clearErrors('typeId');
+                    clearErrors('categoryId');
+                }}
                 placeholder={"Modeles"}
-            />
+            />}</>}
             
         </>);
 

@@ -1,34 +1,47 @@
 'use client';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useState } from 'react';
+import {  useState } from 'react';
 type Option = {
     id: number;
-    name: string;
+    name: string|null;
   };
   
   type SingleSelectProps = {
     options: Option[];
-    selected: Option | undefined;
-    onChange: (selected: Option| undefined) => void;
+    selected: Option | null;
+    onChange: (selected: Option|undefined) => void;
     placeholder?: string;
   };
 
 export default function SingleSelect({ options, selected, onChange, placeholder = "Select options" }: SingleSelectProps) {
     const [expandItems, setExpandItems] = useState(false);
+
   return (
     <div className='flex flex-col w-full'>
-        <Select value={selected?.name||undefined} onValueChange={(value) => {onChange(options.find(option => option.name === value) || undefined)}}>
-              <SelectTrigger>
-                <SelectValue placeholder={selected?.name||placeholder} />
-              </SelectTrigger>
-              <SelectContent>{options.map((option) => (
-                <SelectItem key={option.id} value={option.name}>
-                  {option.name}
-                </SelectItem>
-              ))}
-              </SelectContent>
-          </Select>
+        <Select
+          value={selected?.name ?? ""}
+          onValueChange={(value) => onChange(options.find(option => option.name === value))}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder={placeholder} />
+          </SelectTrigger>
+          <SelectContent>
+            <div className='max-h-48 overflow-auto'>
+            {options.map((option) => (
+              <SelectItem key={option.id} value={option.name??''}>
+                {option.name}
+              </SelectItem>
+            ))}
+            </div>
+            <div className="mt-2 text-right">
+              <button onClick={()=>onChange(undefined)} className="text-xs text-gray-500 hover:underline">
+                Réinitialiser la sélection
+              </button>
+            </div>
+          </SelectContent>
+        </Select>
+
           {options.length<8&&
             <div className='flex flex-wrap truncate items-center gap-2 mt-2'>
               {options.slice(0, expandItems ? options.length : 3).map(option => (

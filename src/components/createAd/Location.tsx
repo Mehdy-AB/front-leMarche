@@ -3,17 +3,20 @@ import SingleSelect from "../ui/singleSelect";
 import { useEffect, useState } from "react";
 import { getCities, getDepartments, getRegions } from "@/lib/req/ghost";
 import Loader from "@/lib/loaders/Loader";
+import { useFormContext } from "react-hook-form";
+import { CreateAdsFormValues } from "@/lib/validation/all.schema";
 
-export default function Location({cityId,setCityId}:{
-    cityId:number,
-    setCityId:(cityId:number)=>void
-}) {
+export default function Location() {
+    const {watch,setValue,clearErrors} = useFormContext<CreateAdsFormValues>();
+    const locationId = watch('locationId');
+
     const [region,setRegion] = useState<region>([]);
     const [regionId,setRegionId] = useState<number|null>(null);
     const [departmentId,setDepartmentId] = useState<number|null>(null);
     const [departments,setDepartments] = useState<department>([]);
     const [cities,setCities] = useState<cities>([]);
     const [isLoading,setIsLoading] = useState(true);
+    const [isLoadingT,setIsLoadingT] = useState(0);
     useEffect(() => {
             const fetchdata= async () => {
                 const fetchRegion= async () => {
@@ -27,6 +30,7 @@ export default function Location({cityId,setCityId}:{
         }, []);
 
     useEffect(() => {
+        setIsLoadingT(1)
         setDepartments([])
         setCities([])
         const fetchDepartments = async () => {
@@ -34,18 +38,21 @@ export default function Location({cityId,setCityId}:{
                 const departments = await getDepartments(regionId);
                 if(departments)
                 setDepartments(departments)
-            }
+                setIsLoadingT(0)
+                        }
         };
         fetchDepartments();
         }, [regionId]);
 
     useEffect(() => {
+        setIsLoadingT(2)
         setCities([])
         const fetchCities = async () => {
             if(departmentId){
                 const cities = await getCities(departmentId);
                 if(cities)
                 setCities(cities)
+                setIsLoadingT(0)
             }
         };
         fetchCities();
@@ -64,29 +71,36 @@ export default function Location({cityId,setCityId}:{
                 options={region.map((region) => ({
                     id: region.id,name: region.name
                 }))}
-                selected={region.find((region) => region.id === regionId)}
+                selected={region.find((region) => region.id === regionId)||null}
                 onChange={(selected) => setRegionId(selected?.id || 0)}
                 placeholder={"region"}
             />
-            {(regionId&&departments.length>0)&&<><label className="block text-sm font-medium text-gray-700 mb-1">Département</label>
-            <SingleSelect
+            {(regionId)&&<><label className="block text-sm font-medium text-gray-700 mb-1">Département</label>
+                {isLoadingT===1?
+            <span className="flex justify-center items-center py-1">
+                <Loader/>
+            </span>
+            :<SingleSelect
                 options={departments.map((department) => ({
                     id: department.id,name: department.name
                 }))}
-                selected={departments.find((department) => department.id === departmentId)}
+                selected={departments.find((department) => department.id === departmentId)||null}
                 onChange={(selected) => setDepartmentId(selected?.id || 0)}
                 placeholder={"departement"}
-            /></>}
-            {departmentId&&cities.length>0&&<><label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
-            <SingleSelect
+            />}</>}
+            {departmentId&&<><label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
+                {isLoadingT===1?
+            <span className="flex justify-center items-center py-1">
+                <Loader/>
+            </span>
+            :<SingleSelect 
                 options={cities.map((city) => ({
                     id: city.id,name: city.name
                 }))}
-                selected={cities.find((city) => city.id === cityId)}
-                onChange={(selected) => setCityId(selected?.id || 0)}
+                selected={cities.find((city) => city.id === locationId)||null}
+                onChange={(selected) => {setValue('locationId',selected?.id || 0);clearErrors('locationId')}}
                 placeholder={"ville"}
-            /></>}
-            <p className="text-xs text-gray-500 mt-1">Sélectionnez la localisation de votre annonce.</p>
+            />}</>}
         </>);
 
 }

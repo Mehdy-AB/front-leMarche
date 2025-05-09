@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 // app/api/user/favorite/route.ts
 export async function POST(req: NextRequest) {
+  try{
     const url = new URL(req.url);
     const id = url.searchParams.get('id');
     const session = req.headers.get('authorization');
@@ -12,10 +13,13 @@ export async function POST(req: NextRequest) {
         Authorization: session!,
       },
     });
-  
     const data = await res.json();
+    console.log(data)
     return NextResponse.json(data);
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
+}
 
   // app/api/user/favorite/route.ts
 export async function DELETE(req: NextRequest) {

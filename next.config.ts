@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
-    domains: ['img.leboncoin.fr'],
+    domains: ['img.leboncoin.fr','res.cloudinary.com'],
   },
   webpack(config) {
     config.module.rules.push({

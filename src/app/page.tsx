@@ -13,10 +13,6 @@ export default function Home() {
   const [isloading] = [session.status === "loading"];
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(()=>{
-    console.log('session',session?.data)
-  },[session])
   
   const scroll = (direction: 'left' | 'right') => {
     const { current } = scrollRef;
@@ -75,7 +71,7 @@ export default function Home() {
             {categories.map((category, idx) => (
               <div
                 key={idx}
-                onClick={() => router.push(`/search?type=${category}`)}
+                onClick={() => router.push(`/quickSearch?type=${category}`)}
                 className="min-w-[150px] relative shadow-lg rounded-xl group cursor-pointer"
               >
                 <img

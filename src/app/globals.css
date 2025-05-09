@@ -10,6 +10,19 @@
   display: none;
 }
 
+/* global.css */
+:root {
+  --colorOne: #fb923c; /* default */
+}
+
+.theme-sunrise  { --colorOne: #facc15; }  /* e.g. yellow-orange */
+.theme-midday   { --colorOne: #38bdf8; }  /* sky blue */
+.theme-sunset   { --colorOne: #f472b6; }  /* pink-orange */
+.theme-night    { --colorOne: #312e81; }  /* indigo */
+:root {
+  transition: --colorOne 0.3s ease;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
