@@ -65,7 +65,7 @@ export async function getBrandsByname(typename: string):Promise<brands|null> {
   }
 }
 
-export async function getModelesByid(typeid: number[]):Promise<modeles|null> {
+export async function getModelesByid(typeid: number):Promise<modeles|null> {
   try {
     const res = await axiosGhost.get(`/ghost/brand?id=${typeid}`);
     return res.data;
@@ -74,7 +74,7 @@ export async function getModelesByid(typeid: number[]):Promise<modeles|null> {
   }
 }
 
-export async function getModelesByname(typename: string[]):Promise<modeles|null> { 
+export async function getModelesByname(typename: string):Promise<modeles|null> { 
   try {
     const res = await axiosGhost.get(`/ghost/brand?name=${typename}`);
     return res.data;

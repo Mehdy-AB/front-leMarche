@@ -20,8 +20,8 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import Image from 'next/image';
 
-export default function ImageDnD({setImages}:{setImages:(images:string[])=>void}) {
-  const [files, setFiles] = useState<{id:number,file:string}[]>([]);
+export default function ImageDnD({defualt,setImages}:{setImages:(images:string[])=>void,defualt?:{id:number,file:string}[]}) {
+  const [files, setFiles] = useState<{id:number,file:string}[]>(defualt??[]);
   const [activeId, setActiveId] = useState<number | null>(null);
   useEffect(() => {
     if (files.length > 0) {

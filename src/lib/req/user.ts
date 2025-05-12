@@ -1,6 +1,6 @@
 import axiosClient from './axiosClient';
 import { CreateAdsFormValues, FilterDto, MessageFormValues } from '../validation/all.schema';
-import { MesAds } from '../types/types';
+import { MesAds, UserAdType } from '../types/types';
 export async function createAd(data: CreateAdsFormValues) {
   try {
     const res = await axiosClient.post('/user/ad', { data });
@@ -40,12 +40,11 @@ export async function getMyAds(filter: FilterDto, take: number, skip: number):Pr
   }
 }
 
-export async function getMyAdById(adId: number, take: number, skip: number) {
+export async function getMyAdById(adId: number):Promise<UserAdType|null> {
   try {
-    const res = await axiosClient.get(`/user/ad/single?id=${adId}&take=${take}&skip=${skip}`);
+    const res = await axiosClient.get(`/user/ad/single?id=${adId}`);
     return res.data;
   } catch (err) {
-    console.error('getMyAdById:', err);
     return null;
   }
 }

@@ -21,7 +21,7 @@ export default function SingleSelect({ options, selected, onChange, placeholder 
     <div className='flex flex-col w-full'>
         <Select
           value={selected?.name ?? ""}
-          onValueChange={(value) => onChange(options.find(option => option.name === value))}
+          onValueChange={(value) => {onChange(options.find(option => option.name === value));console.log(value)}}
         >
           <SelectTrigger>
             <SelectValue placeholder={placeholder} />
@@ -35,7 +35,7 @@ export default function SingleSelect({ options, selected, onChange, placeholder 
             ))}
             </div>
             <div className="mt-2 text-right">
-              <button onClick={()=>onChange(undefined)} className="text-xs text-gray-500 hover:underline">
+              <button onClick={()=>{onChange(undefined);}} className="text-xs text-gray-500 hover:underline">
                 Réinitialiser la sélection
               </button>
             </div>

@@ -73,6 +73,23 @@ export type Attribute= {
         collectionId: number;
     })[];
 }
+export type OneAttribute = {
+    options: {
+        id: number;
+        value: string;
+        attributeId: number;
+    }[];
+    id: number;
+    name: string;
+    multiple: boolean;
+    required: boolean;
+    min: number | null;
+    max: number | null;
+    step: number | null;
+    type: 'TEXT' | 'NUMBER' | 'SELECT';
+    unit: string | null;
+    collectionId: number;
+};
 export type filterAttrbuites = {id:number|string,value:any}[]
 export type modeles ={
         id: number,
@@ -232,3 +249,54 @@ export type Ads={
     }[];
   
   }[];
+
+  export type UserAdType = {ad:{ 
+  id: number;
+  title: string;
+  description: string;
+  price: number;
+  status: "Active" | "Brouillon"; 
+  views: number;
+  createdAt: string; 
+  updatedAt: string;
+  categoryId: number;
+  typeId: number;
+  category: {
+   name: string
+  },
+  type: {
+    name: string
+  },
+  brandId: number;
+  modelId: number;
+  regionId: number;
+  departmentId: number;
+  cityId: number;
+  video: {url:string,id:number} | null;
+  media: {
+  media: {
+    url: string;
+  };
+}[];
+  favoritesBy: {id: number}[];
+  attributes: {
+    attribute: {
+      id: number;
+      name:string
+    };
+    value: number | null;
+    option: {
+      id: number;
+    } | null;
+  }[];
+  _count: {
+    favoritesBy: number;
+  };
+};
+brands:brands,
+modeles:modeles,
+attributes:Attribute,
+regions:region,
+departments:department,
+cities:cities
+}
