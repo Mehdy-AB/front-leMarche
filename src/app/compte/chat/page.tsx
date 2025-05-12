@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import io, { Socket } from "socket.io-client";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
+import { Section } from "lucide-react";
 
 type User = {
   username: string;
@@ -47,7 +48,7 @@ export default function ChatPage() {
   const messageContainerRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const fetchLockRef = useRef(false);
-  
+
   const markMessagesAsSeen = () => {
     if (!selectedUser || !socketRef.current) return;
     socketRef.current.emit("markAsSeen", { from: selectedUser });
@@ -59,17 +60,32 @@ export default function ChatPage() {
   };
 
   useEffect(() => {
-    if (!session) return;
+    console.log("joining")
 
-    const socket = io(process.env.Backend_URL, { query:  {jwt:session.data?.backendToken.accessToken} });
+    if (!session || !session.data) return;
+    console.log("join")
+    //  const socket = io(process.env.Backend_URL, { query: { jwt: session.data?.backendToken.accessToken } });
+
+
+
+
+    let socket = io('http://localhost:8000', {
+      auth: { token: session.data.backendToken.accessToken },
+      transports: ['websocket'], // optional but recommended
+    });
+
+
+
     socketRef.current = socket;
 
     socket.on("connect", () => {
+      console.log("connect");
       socket.emit("getContacts");
     });
 
     socket.on("contacts", (data: { users: User[]; hasMore: boolean }) => {
       if (userPage === 0) {
+        console.log(data);
         setUsers(data.users.filter((u) => u.username !== username));
       } else {
         setUsers((prev) => [
@@ -187,7 +203,7 @@ export default function ChatPage() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [username]);
+  }, [session, session.data]);
 
   function isAtBottom(container: HTMLElement) {
     return container.scrollTop >= 0; // bottom of flex-col-reverse
@@ -219,7 +235,7 @@ export default function ChatPage() {
     const handleScroll = () => {
       if (
         container.scrollTop + container.clientHeight >=
-          container.scrollHeight - 50 &&
+        container.scrollHeight - 50 &&
         !loadingUsers &&
         hasMoreUsers &&
         !userLockRef.current
@@ -347,48 +363,26 @@ export default function ChatPage() {
     }
   };
 
-  if (!username) {
-    return (
-      <div className="p-6">
-        <h1 className="text-lg font-bold">Enter your username</h1>
-        <input
-          value={inputName}
-          onChange={(e) => setInputName(e.target.value)}
-          placeholder="username"
-          className="border p-2 mt-2"
-        />
-        <button
-          onClick={() => setUsername(inputName.trim())}
-          className="ml-2 px-4 py-2 bg-blue-600 text-white"
-        >
-          Join
-        </button>
-      </div>
-    );
-  }
 
-  ("use client");
 
   return (
     <div className="flex h-screen bg-gray-100 text-gray-800 overflow-hidden relative">
       {/* Mobile Sidebar Overlay */}
       <div
-        className={`fixed inset-0 bg-black bg-opacity-30 z-30 transition-opacity md:hidden ${
-          mobileSidebarOpen
-            ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none"
-        }`}
+        className={`fixed inset-0 bg-black bg-opacity-30 z-30 transition-opacity md:hidden ${mobileSidebarOpen
+          ? "opacity-100 pointer-events-auto"
+          : "opacity-0 pointer-events-none"
+          }`}
         onClick={() => setMobileSidebarOpen(false)}
       />
 
       {/* Sidebar - Users List */}
       <aside
         ref={userListRef}
-        className={`fixed md:static top-0 left-0 h-full md:h-auto z-40 bg-white border-r border-gray-200 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 w-72 transform transition-transform duration-300 ${
-          mobileSidebarOpen
-            ? "translate-x-0"
-            : "-translate-x-full md:translate-x-0"
-        }`}
+        className={`fixed md:static top-0 left-0 h-full md:h-auto z-40 bg-white border-r border-gray-200 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 w-72 transform transition-transform duration-300 ${mobileSidebarOpen
+          ? "translate-x-0"
+          : "-translate-x-full md:translate-x-0"
+          }`}
       >
         <div className="p-4 font-semibold text-xl border-b border-gray-200 flex justify-between items-center">
           Sélectionner
@@ -408,9 +402,8 @@ export default function ChatPage() {
                 setMobileSidebarOpen(false);
                 getMessages(u.username);
               }}
-              className={`flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-blue-50 ${
-                isSelected ? "bg-blue-100 font-semibold" : ""
-              } border-b border-gray-100`}
+              className={`flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-blue-50 ${isSelected ? "bg-blue-100 font-semibold" : ""
+                } border-b border-gray-100`}
             >
               <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 border">
                 {u.avatarUrl ? (
@@ -474,16 +467,14 @@ export default function ChatPage() {
                 ref={(el) => {
                   messageRefs.current[msg.id] = el;
                 }}
-                className={`mb-4 flex ${
-                  isMine ? "justify-end" : "justify-start"
-                }`}
+                className={`mb-4 flex ${isMine ? "justify-end" : "justify-start"
+                  }`}
               >
                 <div
-                  className={`max-w-xs px-4 py-2 rounded-2xl shadow ${
-                    isMine
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-800"
-                  }`}
+                  className={`max-w-xs px-4 py-2 rounded-2xl shadow ${isMine
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-800"
+                    }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                   <div className="text-[10px] mt-1 text-right opacity-70">
