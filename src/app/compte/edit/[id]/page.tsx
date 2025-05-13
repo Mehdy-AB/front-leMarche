@@ -5,8 +5,7 @@ import LineLoader from "@/lib/loaders/LineLoader";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import ImageDnD from "@/components/imageDnD/ImageDnD";
-import { CreateAdsFormValues, createAdsSchema } from "@/lib/validation/all.schema";
+import { UpdateAdsFormValues, updateAdsSchema } from "@/lib/validation/all.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormProvider, useForm } from "react-hook-form";
 import DisplayAtt from "@/components/createAd/edit/DisplayAtt";
@@ -18,15 +17,16 @@ import axiosClient from "@/lib/req/axiosClient";
 import Loader from "@/lib/loaders/Loader";
 import { getMyAdById } from "@/lib/req/user";
 import { UserAdType } from "@/lib/types/types";
+import ImageDnDEdit from "@/components/imageDnD/ImageDnDEdit";
 
-export const transformAdToFormValues = (ad: UserAdType): CreateAdsFormValues => {
+export const transformAdToFormValues = (ad: UserAdType): UpdateAdsFormValues => {
   return {
     title: ad.ad.title,
     description: ad.ad.description,
     price: ad.ad.price,
     status: ad.ad.status === 'Active' ? 'Active' : 'Brouillon',
     
-    images: ad.ad.media.map((m) => m.media.url),
+    images: ad.ad.media.map((m) => ({id:m.media.id,file:m.media.url,type:'old'})),
 
     // Assume video URL includes an ID, or leave undefined
     videoid: undefined,
@@ -55,11 +55,8 @@ const newAd = () => {
     const id = params?.id;
     const [fetchError,setFetchError] = useState<string|undefined>();
     const [ad,setAd] = useState<UserAdType|null>(null);
-    const form = useForm<CreateAdsFormValues>({
-        resolver: zodResolver(createAdsSchema),
-        defaultValues: {
-            status: "Active",
-        },
+    const form = useForm<UpdateAdsFormValues>({
+        resolver: zodResolver(updateAdsSchema),
     });
     const { register,reset, handleSubmit, setValue, getValues, formState: { errors } } = form;
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -85,23 +82,23 @@ const newAd = () => {
         fetchAd();
     },[])
 
-    const onSubmit = async (data: CreateAdsFormValues) => {
+    const onSubmit = async (data: UpdateAdsFormValues) => {
         setIsSubmitting(true);
-        
-        axiosClient.post('/user/ad', { 
-            ...data, 
-            attributes: data.attributes?.filter(attr => !!attr.value) 
-        }).then(async res => {
-            if (res.data.error) {
-            setFetchError( res.data.message );
-            setIsSubmitting(false);
-            return;
-            }
-            router.push("/");
-        }).catch(e => {
-            setFetchError( e.response?.data?.error || 'information invalide' );
-            setIsSubmitting(false);
-        });
+        console.log(data)
+        // axiosClient.post('/user/ad', { 
+        //     ...data, 
+        //     attributes: data.attributes?.filter(attr => !!attr.value) 
+        // }).then(async res => {
+        //     if (res.data.error) {
+        //     setFetchError( res.data.message );
+        //     setIsSubmitting(false);
+        //     return;
+        //     }
+        //     router.push("/");
+        // }).catch(e => {
+        //     setFetchError( e.response?.data?.error || 'information invalide' );
+        //     setIsSubmitting(false);
+        // });
         
     }
 
@@ -225,7 +222,7 @@ const newAd = () => {
             {/* Media */}
             <div className="border p-4 rounded-lg bg-gray-50">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Photos</label>
-                <ImageDnD defualt={ad.ad.media.map((image,idx)=>({id:idx,file:image.media.url}))} setImages={(data)=>setValue('images',data)} />
+                <ImageDnDEdit defualt={ad.ad.media.map((image, idx) => ({ id: idx, file: image.media.url, type: 'old' }))} setValue={(data) => setValue('images', Array.isArray(data) ? [...data] : [])} />
                 {errors.images ? (
                         <span className="text-red-500 text-xs">
                           {errors.images.message}
@@ -253,7 +250,9 @@ const newAd = () => {
 
             {/* Right column - status & org */}
             <div className="space-y-6">
-
+            <button type="submit" disabled={!!isSubmitting} className="w-full disabled:bg-gray-300 bg-colorOne text-white py-3 rounded-lg font-semibold hover:bg-orange-600 transition">
+                {!!isSubmitting?<Loader/>:'Modifier l’annonce'}
+            </button>
             <div className="border p-4 rounded-lg bg-white">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
                 <SingleSelectString
@@ -300,10 +299,6 @@ const newAd = () => {
                       ):
                 (<p className="text-xs text-gray-500 mt-1">Cela aide à mieux classer votre annonce.</p>)}
             </div>
-
-            <button type="submit" disabled={!!isSubmitting} className="w-full disabled:bg-gray-300 bg-colorOne text-white py-3 rounded-lg font-semibold hover:bg-orange-600 transition">
-                {!!isSubmitting?<Loader/>:'Publier l’annonce'}
-            </button>
             </div>
         </form>
         </FormProvider>

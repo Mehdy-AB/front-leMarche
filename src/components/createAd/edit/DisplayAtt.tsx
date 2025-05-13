@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import { useFormContext, useFieldArray } from 'react-hook-form';
 import { getAttributes } from '@/lib/req/ghost';
 
-import { CreateAdsFormValues } from '@/lib/validation/all.schema';
+import { UpdateAdsFormValues } from '@/lib/validation/all.schema';
 import ControlledAttributeField from './ControlledAttributeField';
 import { Attribute } from '@/lib/types/types';
 
 export default function DisplayAtt({data }: { data: Attribute }) {
-  const { control } = useFormContext<CreateAdsFormValues>();
+  const { control } = useFormContext<UpdateAdsFormValues>();
   const { fields } = useFieldArray({
     control,
     name: 'attributes',

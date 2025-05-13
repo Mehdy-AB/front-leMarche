@@ -224,16 +224,89 @@ export const createAdsSchema = z
     });
   });
 
+  export const updateAdsSchema = z
+  .object({
+    title: z
+      .string()
+      .min(6, { message: 'Le titre doit contenir au moins 6 caractères.' }),
+      
+    description: z
+      .string()
+      .min(20, { message: 'La description doit contenir au moins 20 caractères.' }),
 
-  
-  export const messageSchema = z.object({
-    id: z.number().min(0),
-    content: z.string().min(1),
+    price: z
+      .number({ invalid_type_error: 'Le prix doit être un nombre.' })
+      .int({ message: 'Le prix doit être un entier.' })
+      .min(100, { message: 'Le prix doit être au moins de 100 Euro.' })
+      .max(10000000000, { message: 'Le prix ne doit pas dépasser 1 000 000 000 Euro.' }),
+
+    status: z.enum(['Active', 'Brouillon'], {
+      errorMap: () => ({ message: 'Le statut sélectionné est invalide.' }),
+    }),
+
+    images: z
+      .array(
+        z.object({
+          id:z.number(),
+          file:z.string(),
+          type:z.enum(['new','old'])
+        })
+      )
+      .min(3, { message: 'Vous devez ajouter au moins 3 images.' })
+      .max(10, { message: 'Vous ne pouvez pas ajouter plus de 10 images.' }),
+
+    videoid: z.number().optional(),
+
+    categoryId: z
+      .number({ invalid_type_error: 'La catégorie est requise.' })
+      .min(0, { message: 'Veuillez sélectionner une catégorie.' }),
+
+    typeId: z
+      .number({ invalid_type_error: 'Le type est requis.' })
+      .min(0, { message: 'Veuillez sélectionner un type.' }),
+
+    brandId: z
+      .number({ invalid_type_error: 'La marque est requise.' })
+      .min(0, { message: 'Veuillez sélectionner une marque.' }),
+
+    modelId: z
+      .number({ invalid_type_error: 'Le modèle est requis.' })
+      .min(0, { message: 'Veuillez sélectionner un modèle.' }),
+
+    locationId: z
+      .number({ invalid_type_error: 'La localisation est requise.' })
+      .min(0, { message: 'Veuillez sélectionner une localisation.' }),
+
+    attributes: z
+      .array(
+        z.object({
+          attributeId: z.number(),
+          name: z.string(),
+          attributeCollectionId: z.number(),
+          value:  z.number().optional(),
+          required: z.boolean().optional(),
+        })
+      )
+      .optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.attributes) return;
+
+    data.attributes.forEach((attr, index) => {
+      if (attr.required) {
+        const isEmpty =
+          attr.value === undefined ||
+          attr.value === null 
+        if (isEmpty) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `« ${attr.name} »`,
+            path: ['attributes', index, 'value'],
+          });
+        }
+      }
+    });
   });
   
-  export type MessageFormValues = z.infer<typeof messageSchema>;
-  // UpdateAdsDto is PartialType(CreateAdsDto)
- // export const updateAdsSchema = createAdsSchema.partial();
-  
   export type CreateAdsFormValues = z.infer<typeof createAdsSchema>;
-  //export type UpdateAdsFormValues = z.infer<typeof updateAdsSchema>;
+  export type UpdateAdsFormValues = z.infer<typeof updateAdsSchema>;

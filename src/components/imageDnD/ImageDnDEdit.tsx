@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -20,17 +20,17 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import Image from 'next/image';
 
-export default function ImageDnD({setImages}:{setImages:(images:string[])=>void}) {
-  const [files, setFiles] = useState<{id:number,file:string}[]>([]);
+export default function ImageDnDEdit({defualt,setValue}:{setValue:(data:{id:number,file:string,type:'new'|'old'}[])=>void,defualt:{id:number,file:string,type:'new'|'old'}[]}) {
   const [activeId, setActiveId] = useState<number | null>(null);
-  useEffect(() => {
+  const [files, setFiles] = useState<{id:number,file:string,type:'new'|'old'}[]>(defualt??[]);
+
+  useEffect(()=>{
     if (files.length > 0) {
-      setImages(files.map((file) => file.file));
+      setValue(files);
     } else {
-      setImages([]);
+      setValue([]);
     }
-  }
-  , [files, setImages]);
+  },[files,setValue])
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 5 },
@@ -50,7 +50,7 @@ export default function ImageDnD({setImages}:{setImages:(images:string[])=>void}
 
     const oldIndex = files.findIndex((file) => file.id === active.id);
     const newIndex = files.findIndex((file) => file.id === over.id);
-    setFiles((prev) => arrayMove(prev, oldIndex, newIndex));
+    setFiles(arrayMove(files, oldIndex, newIndex));
     setActiveId(null);
   };
 
@@ -63,7 +63,6 @@ export default function ImageDnD({setImages}:{setImages:(images:string[])=>void}
     const availableSlots = MAX_FILES - files.length;
   
     let count = 0;
-  
     for (const file of Array.from(selectedFiles)) {
       if (count >= availableSlots) break;
       if (file.size > MAX_SIZE_MB * 1024 * 1024) continue;
@@ -77,13 +76,13 @@ export default function ImageDnD({setImages}:{setImages:(images:string[])=>void}
           {
             file: base64, // just the base64 string
             id: Date.now() + Math.floor(Math.random() * 1000),
+            type:'new'
           },
         ]);
       };
       reader.readAsDataURL(file);
       count++;
     }
-  
     e.target.value = '';
   };  
 
@@ -102,7 +101,7 @@ export default function ImageDnD({setImages}:{setImages:(images:string[])=>void}
       <SortableContext items={sortableId} strategy={rectSortingStrategy}>
         <div className="grid grid-cols-1 sm:grid-cols-2 items-center md:grid-cols-4 xl:grid-cols-5 gap-4 border-gray-300 p-4 border border-dashed rounded-xl">
           {files.map((file, idx) => (
-            <SortableImage key={file.id} onDelete={()=>setFiles((prv)=>prv.filter(f=>f.id!==file.id))} id={file.id} src={file.file} first={idx === 0} />
+            <SortableImage key={file.id} onDelete={()=>setFiles((prv)=>prv.filter(f=>f.id!==file.id))} id={file.id} src={file.type==='new'?`data:image/png;base64,${file.file}`:file.file} first={idx === 0} />
           ))}
 
           {/* Upload Section */}
@@ -131,14 +130,20 @@ export default function ImageDnD({setImages}:{setImages:(images:string[])=>void}
 
       <DragOverlay>
         {activeId && (
-          <div className="w-40 h-40 relative shadow-lg rounded overflow-hidden ring-1 ring-blue-400">
-            <Image
-              src={`data:image/png;base64,${files.find((file) => file.id === activeId)?.file|| ''}`}
-              alt="drag-overlay"
-              fill
-              className="object-cover"
-            />
-          </div>
+          (() => {
+            const image = files.find((file) => file.id === activeId);
+            console.log('ss',image)
+            return (
+              <div className="w-40 h-40 relative shadow-lg rounded overflow-hidden ring-1 ring-blue-400">
+                <Image
+                  src={image?image.type==='new'?`data:image/png;base64,${image.file}`:image.file:''}
+                  alt="drag-overlay"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+            );
+          })()
         )}
       </DragOverlay>
     </DndContext>
@@ -187,7 +192,7 @@ function SortableImage({ id, src, first, onDelete } : SortableImageProps) {
     </span>
       <div className={`relative w-full h-full`}>
         <Image
-          src={`data:image/png;base64,${src}`}
+          src={src}
           alt="sortable"
           fill
           className="object-cover z-0"

@@ -275,6 +275,7 @@ export type Ads={
   video: {url:string,id:number} | null;
   media: {
   media: {
+    id:number
     url: string;
   };
 }[];

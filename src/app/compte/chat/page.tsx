@@ -4,28 +4,54 @@ import { useEffect, useRef, useState } from "react";
 import io, { Socket } from "socket.io-client";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
-import { Section } from "lucide-react";
+import Header from "@/components/home/Header";
+import { useRouter } from "next/navigation";
+import Footer from "@/components/home/Footer";
 
-type User = {
-  username: string;
-  isOnline: boolean;
-  avatarUrl?: string;
+type ConversationItem = {
+  id: number;
+  user: {
+    id: number;
+    image: {url:string} | null;
+    username: string;
+    email: string;
+    isOnline: boolean;
+  };
+  ad: {
+    title: string;
+    price: number;
+    media: {
+      media: {
+        url: string;
+      };
+    }[];
+  };
+  time: string; // or use Date if it's parsed: `time: Date;`
 };
+
 
 type Message = {
-  id: number;
-  content: string;
-  sender: { username: string };
-  receiver: { username: string };
-  timestamp: string;
-  seen: boolean;
-};
+    conversation: {
+        id: number;
+        activeAt: Date;
+        adId: number;
+        senderId: number;
+        receiverId: number;
+    };
+} & {
+    id: number;
+    senderId: number;
+    conversationId: number;
+    content: string;
+    read: boolean;
+    sentAt: Date;
+}
 
 export default function ChatPage() {
   const session = useSession();
-  const [inputName, setInputName] = useState("");
-  const [selectedUser, setSelectedUser] = useState<string | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
+  const router = useRouter()
+  const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
+  const [conversation, setConversation] = useState<ConversationItem[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [unread, setUnread] = useState<Record<string, boolean>>({});
@@ -44,99 +70,88 @@ export default function ChatPage() {
   const userLockRef = useRef(false);
 
   const socketRef = useRef<Socket | null>(null);
-  const selectedUserRef = useRef<string | null>(null);
+  const selectedConversationIdRef = useRef<number | null>(null);
   const messageContainerRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const fetchLockRef = useRef(false);
-
+  useEffect(()=>{
+    console.log(conversation)
+  },[conversation])
   const markMessagesAsSeen = () => {
-    if (!selectedUser || !socketRef.current) return;
-    socketRef.current.emit("markAsSeen", { from: selectedUser });
+    if (!selectedConversation || !socketRef.current) return;
+
+    socketRef.current.emit("markAsSeen", { conversationId: selectedConversation });
     setMessages((prev) =>
       prev.map((m) =>
-        m.receiver.username === session.data?.user?.username && !m.seen ? { ...m, seen: true } : m
+        m.conversationId === selectedConversation ? { ...m, seen: true } : m
       )
     );
   };
 
   useEffect(() => {
-    console.log("joining")
-
     if (!session || !session.data) return;
-    console.log("join")
-    //  const socket = io(process.env.Backend_URL, { query: { jwt: session.data?.backendToken.accessToken } });
 
-
-
-
-    let socket = io('http://localhost:8000', {
+    const socket = io('http://localhost:8000', {
       auth: { token: session.data.backendToken.accessToken },
-      transports: ['websocket'], // optional but recommended
+      transports: ['websocket'],
     });
-
-
 
     socketRef.current = socket;
 
-    socket.on("connect", () => {
-      console.log("connect");
-      socket.emit("getContacts");
+   socket.on("connect", () => {
+      socket.on("ready", () => {
+        socket.emit("getContacts");
+      });
     });
 
-    socket.on("contacts", (data: { users: User[]; hasMore: boolean }) => {
+
+    socket.on("contacts", (data: { conversation: ConversationItem[]; hasMore: boolean }) => {
       if (userPage === 0) {
-        console.log(data);
-        setUsers(data.users.filter((u) => u.username !== username));
+        setConversation(data.conversation);
       } else {
-        setUsers((prev) => [
+        setConversation((prev) => [
           ...prev,
-          ...data.users.filter((u) => u.username !== username),
+          ...data.conversation,
         ]);
       }
-
       setHasMoreUsers(data.hasMore);
       setLoadingUsers(false);
       userLockRef.current = false;
     });
 
     socket.on("receiveMessage", (message: Message) => {
-      const sender = message.sender.username;
-      const receiver = message.receiver.username;
+      if (!session || !session.data) return;
+      const senderId = message.senderId;
 
-      const isFromMe = sender === username;
-      const isToMe = receiver === username;
+      const isFromMe = senderId === session.data.user.id;
 
-      const chattingWith = isFromMe ? receiver : sender;
-
-      const isCurrentChat = chattingWith === selectedUserRef.current;
+      const isCurrentChat = message.conversationId === selectedConversationIdRef.current;
 
       if (!isCurrentChat) {
-        setUnread((prev) => ({ ...prev, [chattingWith]: true }));
+        setUnread((prev) => ({ ...prev, [message.conversationId]: true }));
         new Audio("/notification.mp3").play();
-        moveUserToTop(chattingWith);
+        moveUserToTop(message.conversationId);
       }
 
       // Append message if relevant to this user
-      if (isFromMe || isToMe) {
-        setMessages((prev) => [message, ...prev]);
+      setMessages((prev) => [message, ...prev]);
 
-        const container = messageContainerRef.current;
-        if (isCurrentChat && container) {
-          const alreadyAtBottom = isAtBottom(container);
+      const container = messageContainerRef.current;
+      if (isCurrentChat && container) {
+        const alreadyAtBottom = isAtBottom(container);
 
-          requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
             // Always scroll to bottom if already at bottom
-            if (alreadyAtBottom) {
-              container.scrollTop = 0;
-              markMessagesAsSeen();
-            }
+          if (alreadyAtBottom) {
+            container.scrollTop = 0;
+            markMessagesAsSeen();
+          }
 
             // ✅ If you're the receiver and already at bottom, mark seen immediately
-            if (isToMe && alreadyAtBottom) {
-              markMessagesAsSeen();
-            }
-          });
-        }
+          if (!isFromMe && alreadyAtBottom) {
+            markMessagesAsSeen();
+          }
+        });
       }
 
       socket.emit("getContacts");
@@ -189,10 +204,10 @@ export default function ChatPage() {
       }
     );
 
-    socket.on("messagesSeen", ({ by }: { by: string }) => {
+    socket.on("messagesSeen", ({ by,conversationId }: { by: number,conversationId:number }) => {
       setMessages((prev) =>
         prev.map((m) =>
-          m.sender.username === username && m.receiver.username === by
+          m.conversationId=== conversationId && m.senderId !== by
             ? { ...m, seen: true }
             : m
         )
@@ -210,15 +225,15 @@ export default function ChatPage() {
   }
 
   useEffect(() => {
+    if (!session || !session.data) return;
     const container = messageContainerRef.current;
     if (!container) return;
 
     const handleScroll = () => {
-      console.log("scrolling", container.scrollTop);
       if (
-        selectedUser &&
+        selectedConversation &&
         container.scrollTop >= 0 &&
-        messages.some((m) => m.receiver.username === username && !m.seen)
+        messages.some((m) => m.senderId !== session.data.user.id && !m.read)
       ) {
         markMessagesAsSeen();
       }
@@ -226,7 +241,7 @@ export default function ChatPage() {
 
     container.addEventListener("scroll", handleScroll);
     return () => container.removeEventListener("scroll", handleScroll);
-  }, [messages, selectedUser]);
+  }, [messages, selectedConversation]);
 
   useEffect(() => {
     const container = userListRef.current;
@@ -271,7 +286,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     const sentinel = topSentinelRef.current;
-    if (!sentinel || !selectedUser) return;
+    if (!sentinel || !selectedConversation) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -279,7 +294,7 @@ export default function ChatPage() {
           entries[0].isIntersecting &&
           !loadingMore &&
           hasMoreMessages &&
-          selectedUser &&
+          selectedConversation &&
           !fetchLockRef.current
         ) {
           fetchLockRef.current = true;
@@ -288,7 +303,7 @@ export default function ChatPage() {
           setPage(nextPage);
 
           socketRef.current?.emit("getMessages", {
-            to: selectedUser,
+            to: selectedConversation,
             skip: nextPage * 10,
             limit: 10,
           });
@@ -309,22 +324,22 @@ export default function ChatPage() {
     return () => {
       observer.disconnect();
     };
-  }, [loadingMore, hasMoreMessages, page, selectedUser]);
+  }, [loadingMore, hasMoreMessages, page, selectedConversation,socketRef]);
 
-  const moveUserToTop = (usernameToMove: string) => {
-    setUsers((prevUsers) => {
-      const existing = prevUsers.find((u) => u.username === usernameToMove);
-      if (!existing) return prevUsers;
-      const filtered = prevUsers.filter((u) => u.username !== usernameToMove);
+  const moveUserToTop = (conversationToMove: number) => {
+    setConversation((prevConversation) => {
+      const existing = prevConversation.find((c) => c.id === conversationToMove);
+      if (!existing) return prevConversation;
+      const filtered = prevConversation.filter((c) => c.id !== conversationToMove);
       return [existing, ...filtered];
     });
   };
 
-  const getMessages = (user: string) => {
-    if (user === selectedUser) return;
+  const getMessages = (conversationId: number) => {
+    if (conversationId === selectedConversation) return;
 
-    setSelectedUser(user);
-    selectedUserRef.current = user;
+    setSelectedConversation(conversationId);
+    selectedConversationIdRef.current = conversationId;
     setMessages([]);
     setPage(0);
     setHasMoreMessages(true);
@@ -332,21 +347,21 @@ export default function ChatPage() {
     setConversationKey((prev) => prev + 1);
 
     if (socketRef.current) {
-      socketRef.current.emit("getMessages", { to: user, limit: 20 });
-      socketRef.current.emit("markAsSeen", { from: user });
+      socketRef.current.emit("getMessages", { conversationId: conversationId, limit: 20 });
+      socketRef.current.emit("markAsSeen", { conversationId: conversationId });
 
       setUnread((prev) => {
         const newUnread = { ...prev };
-        delete newUnread[user];
+        delete newUnread[conversationId];
         return newUnread;
       });
     }
   };
 
   const sendMessage = () => {
-    if (newMessage && selectedUser && socketRef.current) {
+    if (newMessage && selectedConversation && socketRef.current) {
       socketRef.current.emit("sendMessage", {
-        to: selectedUser,
+        conversationId: selectedConversation,
         content: newMessage,
       });
 
@@ -358,31 +373,28 @@ export default function ChatPage() {
       });
 
       setNewMessage("");
-      moveUserToTop(selectedUser);
+      moveUserToTop(selectedConversation);
       socketRef.current.emit("getContacts");
     }
   };
 
-
-
+  if(!session)return(<div>loading</div>)
   return (
+    <><Header session={session.data} router={router} />
     <div className="flex h-screen bg-gray-100 text-gray-800 overflow-hidden relative">
       {/* Mobile Sidebar Overlay */}
       <div
         className={`fixed inset-0 bg-black bg-opacity-30 z-30 transition-opacity md:hidden ${mobileSidebarOpen
           ? "opacity-100 pointer-events-auto"
-          : "opacity-0 pointer-events-none"
-          }`}
-        onClick={() => setMobileSidebarOpen(false)}
-      />
+          : "opacity-0 pointer-events-none"}`}
+        onClick={() => setMobileSidebarOpen(false)} />
 
       {/* Sidebar - Users List */}
       <aside
         ref={userListRef}
         className={`fixed md:static top-0 left-0 h-full md:h-auto z-40 bg-white border-r border-gray-200 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 w-72 transform transition-transform duration-300 ${mobileSidebarOpen
           ? "translate-x-0"
-          : "-translate-x-full md:translate-x-0"
-          }`}
+          : "-translate-x-full md:translate-x-0"}`}
       >
         <div className="p-4 font-semibold text-xl border-b border-gray-200 flex justify-between items-center">
           Sélectionner
@@ -393,37 +405,35 @@ export default function ChatPage() {
             ✕
           </button>
         </div>
-        {users.map((u, i) => {
-          const isSelected = selectedUser === u.username;
+        {conversation?.map((c, idx) => {
+          const isSelected = selectedConversation === c.id;
           return (
             <div
-              key={i}
+              key={idx}
               onClick={() => {
                 setMobileSidebarOpen(false);
-                getMessages(u.username);
-              }}
-              className={`flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-blue-50 ${isSelected ? "bg-blue-100 font-semibold" : ""
-                } border-b border-gray-100`}
+                getMessages(c.id);
+              } }
+              className={`flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-blue-50 ${isSelected ? "bg-blue-100 font-semibold" : ""} border-b border-gray-100`}
             >
               <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 border">
-                {u.avatarUrl ? (
+                {c.user.image?.url ? (
                   <Image
-                    src={u.avatarUrl}
+                    src={c.user.image?.url}
                     alt="avatar"
                     width={48}
-                    height={48}
-                  />
+                    height={48} />
                 ) : (
                   <div className="flex items-center justify-center w-full h-full text-gray-700 font-bold text-sm uppercase">
-                    {u.username.slice(0, 2)}
+                    {c.user.username.slice(0, 2)}
                   </div>
                 )}
               </div>
               <div className="flex-1 truncate">
-                <div className="font-medium">{u.username}</div>
+                <div className="font-medium">{c.user.username}</div>
                 <div className="text-xs text-gray-400">Annonce supprimée</div>
               </div>
-              {unread[u.username] && (
+              {unread[c.id] && (
                 <span className="text-xs text-white bg-red-500 px-2 py-0.5 rounded-full">
                   New
                 </span>
@@ -437,8 +447,8 @@ export default function ChatPage() {
       <section className="flex flex-col flex-1 bg-white border-r border-gray-200">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 font-semibold text-lg flex justify-between items-center">
-          {selectedUser
-            ? `Chat avec ${selectedUser}`
+          {selectedConversation
+            ? `Chat avec ${selectedConversation}`
             : "Sélectionner un utilisateur"}
           <button
             className="md:hidden text-sm text-blue-500"
@@ -454,8 +464,8 @@ export default function ChatPage() {
           className="flex-1 overflow-y-auto flex p-6 scrollbar-thin scrollbar-thumb-gray-300 flex-col-reverse"
         >
           {messages.map((msg, i) => {
-            const isMine = msg.sender.username === username;
-            const time = new Date(msg.timestamp).toLocaleTimeString([], {
+            const isMine = msg.senderId === session.data?.user.id;
+            const time = new Date(msg.sentAt).toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
             });
@@ -466,19 +476,17 @@ export default function ChatPage() {
                 data-id={msg.id}
                 ref={(el) => {
                   messageRefs.current[msg.id] = el;
-                }}
-                className={`mb-4 flex ${isMine ? "justify-end" : "justify-start"
-                  }`}
+                } }
+                className={`mb-4 flex ${isMine ? "justify-end" : "justify-start"}`}
               >
                 <div
                   className={`max-w-xs px-4 py-2 rounded-2xl shadow ${isMine
                     ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-800"
-                    }`}
+                    : "bg-gray-100 text-gray-800"}`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                   <div className="text-[10px] mt-1 text-right opacity-70">
-                    {time} {isMine && (msg.seen ? "✓✓ Vu" : "✓ Envoyé")}
+                    {time} {isMine && (msg.read ? "✓✓ Vu" : "✓ Envoyé")}
                   </div>
                 </div>
               </div>
@@ -507,8 +515,7 @@ export default function ChatPage() {
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
             placeholder="Écrivez votre message"
-            className="flex-1 px-4 py-2 rounded-full border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none"
-          />
+            className="flex-1 px-4 py-2 rounded-full border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none" />
           <button
             onClick={sendMessage}
             className="p-2 bg-orange-500 text-white rounded-full hover:bg-orange-600 transition"
@@ -519,21 +526,17 @@ export default function ChatPage() {
       </section>
 
       {/* Right - User Info */}
-      {selectedUser && (
+      {selectedConversation && (
         <aside className="hidden lg:flex flex-col w-72 bg-white border-l border-gray-200 p-4">
           <div className="flex flex-col items-center text-center">
             <div className="w-20 h-20 rounded-full overflow-hidden border bg-gray-200 mb-2">
               <Image
-                src={
-                  users.find((u) => u.username === selectedUser)?.avatarUrl ||
-                  "/default-avatar.png"
-                }
+                src={"/default-avatar.png"}
                 alt="avatar"
                 width={80}
-                height={80}
-              />
+                height={80} />
             </div>
-            <h3 className="font-semibold text-lg">{selectedUser}</h3>
+            <h3 className="font-semibold text-lg">{selectedConversation}</h3>
             <div className="text-sm text-gray-500 mt-1">Profil recommandé</div>
           </div>
 
@@ -552,5 +555,7 @@ export default function ChatPage() {
         </aside>
       )}
     </div>
+    <Footer/>
+    </>
   );
 }

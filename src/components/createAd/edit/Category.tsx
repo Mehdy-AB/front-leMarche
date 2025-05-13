@@ -3,7 +3,7 @@ import { useState } from "react";
 import {  getModelesByid } from "@/lib/req/ghost";
 import Loader from "@/lib/loaders/Loader";
 import { useFormContext } from "react-hook-form";
-import { CreateAdsFormValues } from "@/lib/validation/all.schema";
+import { UpdateAdsFormValues } from "@/lib/validation/all.schema";
 import SingleSelect from "@/components/ui/singleSelect";
 
 export default function Category({category,
@@ -14,7 +14,7 @@ category:string
 type:string
 brands:brands
 mod:modeles}) {
-    const {watch,setValue,clearErrors} = useFormContext<CreateAdsFormValues>();
+    const {watch,setValue,clearErrors} = useFormContext<UpdateAdsFormValues>();
     const [modele,setModele] = useState<modeles>(mod);
     const [isLoadingT,setIsLoadingT] = useState(0);
     const brandId = watch('brandId');
