@@ -37,7 +37,7 @@ export async function PUT(req: NextRequest) {
       const url = new URL(req.url);
       const id = url.searchParams.get('id');
       const session = req.headers.get('authorization');
-      const json = await req.json();
+      const json = req.body;
   
       const res = await fetch(`${process.env.Backend_URL}/user/updateAd/${id}`, {
         method: 'PUT',
@@ -45,13 +45,15 @@ export async function PUT(req: NextRequest) {
           Authorization: session!,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(json),
+        body: json,
+        // Removed invalid 'duplex' property
       });
   
       const data = await res.json();
       if (data.error) throw new Error(data.message);
       return NextResponse.json(data);
     } catch (err: any) {
+      console.log(err)
       return NextResponse.json({ error: err.message }, { status: 500 });
     }
   }

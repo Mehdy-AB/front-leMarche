@@ -1,3 +1,4 @@
+import Loader from "@/lib/loaders/Loader";
 import axiosGhost from "@/lib/req/axiosGhost";
 import { SendCodeDto, sendCodeDtoSchema } from "@/lib/validation/all.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -42,14 +43,18 @@ export const EmailRegister=({etape,setEtape,setEmail}:{
           {errors.email.message}
         </span>
       )}
-    <button type="submit" className="bg-orange-400 rounded-4xl py-3 rounded-full mt-6 font-semibold text-white">Next</button>
+    <button disabled={isSubmitting} type="submit" className="bg-orange-400 disabled:bg-gray-200 rounded-4xl py-3 rounded-full mt-6 font-semibold text-white">
+      {isSubmitting?
+      <Loader/>
+      :'Next'}
+      </button>
     </form>
         {etape===0&&<><div className="grid grid-cols-11 items-center mt-16">
           <span className="w-full col-span-5 rounded bg-gray-200 h-[2px]"></span>
           <span className="w-full col-span-1 text-center text-xl font-semibold">OR</span>
           <span className="w-full col-span-5 rounded bg-gray-200 h-[2px]"></span>
         </div>
-        <div className="grid gap-20 px-5 grid-cols-2">
+        <div className="flex-col sm:flex-row gap-y-4 gap-x-20 px-5 flex">
           <button
           className="w-full flex items-center justify-center gap-x-3 py-2.5 border rou</div>nded-lg text-sm font-medium hover:bg-gray-50 duration-150 active:bg-gray-100"
         >
@@ -62,7 +67,7 @@ export const EmailRegister=({etape,setEtape,setEmail}:{
           Continue with Google
         </button>
         <button
-          className="w-full flex items-center justify-center gap-x-3 py-2.5 border rounded-lg text-sm font-medium hover:bg-gray-50 duration-150 active:bg-gray-100"
+          className="w-full flex  items-center justify-center gap-x-3 py-2.5 border rounded-lg text-sm font-medium hover:bg-gray-50 duration-150 active:bg-gray-100"
         >
           <svg className="size-5" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="16" cy="16" r="14" fill="url(#paint0_linear_87_7208)"/>

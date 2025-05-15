@@ -129,10 +129,9 @@ export default function ImageDnDEdit({defualt,setValue}:{setValue:(data:{id:numb
       </SortableContext>
 
       <DragOverlay>
-        {activeId && (
+        {typeof activeId==='number' && (
           (() => {
             const image = files.find((file) => file.id === activeId);
-            console.log('ss',image)
             return (
               <div className="w-40 h-40 relative shadow-lg rounded overflow-hidden ring-1 ring-blue-400">
                 <Image

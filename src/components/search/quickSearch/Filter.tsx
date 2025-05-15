@@ -9,16 +9,17 @@ import MaxMinInputPrice from './max-min-inputPrice';
 import ModelesDropdown from './modeles-dropdown';
 
 
-export default function Filter({goBack,typeId,brandsId,handleSubmit}:{
+export default function Filter({goBack,displayBrands,typeId,brandsId,handleSubmit}:{
     goBack:()=>void,
     typeId:number
     handleSubmit:()=>void,
+    displayBrands:Boolean
     brandsId:number[]
   }) {
   const [data,setData] = useState<Attribute>();
   const [modeles,setModeles] = useState<{modeles:modeles,isloding:boolean}>({modeles:[],isloding:true});
   const [loader,setLoader] = useState(true);
-  
+
   useEffect(() => {
     const  getAttrbuites=async ()=>{
         const data = await getAttributes(typeId); 
@@ -57,12 +58,12 @@ export default function Filter({goBack,typeId,brandsId,handleSubmit}:{
             unit={'€'}
           />
       </div>
-      <div className='border-l-2 pl-2 flex flex-col '>
+      {displayBrands&&<div className='border-l-2 pl-2 flex flex-col '>
        <label className={`text-sm font-semibold border-l-4 pl-1 mb-1 ${false?'border-colorOne':''}`}>Models</label>
           <ModelesDropdown modeles={modeles.modeles} isLoading={modeles.isloding} />
-      </div>
-    {data?.data.map((attribute,idx) => 
-    (<div key={idx} className={`flex flex-col ${idx % 2 === 1 ? 'border-r-2 pr-2' : 'border-l-2 pl-2'}`}>
+      </div>}
+    {data?.data?.map((attribute,idx) => 
+    (<div key={idx} className={`flex flex-col ${idx % 2 === 1 ? 'border-l-2 pl-2' : 'border-r-2 pr-2'}`}>
       {attribute.type!=='SELECT'?(
       <div className='flex flex-col gap-x-2'>
         <label className={`text-sm font-semibold border-l-4 pl-1 mb-1 mt-2 ${false?'border-colorOne':''}`}>{attribute.name}</label>
@@ -74,7 +75,6 @@ export default function Filter({goBack,typeId,brandsId,handleSubmit}:{
           step={attribute.step || undefined}
           unit={attribute.unit || ''}
         />
-        
       </div>
       ):(
       <div className='flex flex-col gap-2'>

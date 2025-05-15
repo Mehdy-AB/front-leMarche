@@ -10,10 +10,12 @@ export const BrandAndlocation=({
     brands,
     region,
     goBack,
+    displayBrands,
     submit
 }:{
     brands:brands,
     region:region,
+    displayBrands:boolean,
     goBack:()=>void,
     submit:(data:filterEtape2Dto)=>void
 })=>{
@@ -86,9 +88,14 @@ export const BrandAndlocation=({
 
     return(<>
     <div className="flex flex-col w-full" >
-        <div className="grid grid-cols-5">
+        
+        <div className="grid gap-2 grid-cols-5">
         <div className="h-64 col-span-2 w-fit">
-          <FranceMap/> 
+           <FranceMap selectedDepartments={selectedLocation.map(loc=>({id:loc.id,name:loc.name}))} setSelectedDepartments={(id,name)=>{
+            const isthere= !!selectedLocation.find(loc=>loc.id ===id)
+            if(isthere)setSelectedLocation(prv=>prv.filter(loc=>loc.id!==id))
+                else setSelectedLocation(prv=>[...prv,{id,name,type:'department'}])
+           }}/>
         </div>
         <div className="flex col-span-3 w-full flex-col justify-center">
             <span className="text-lg font-semibold">Où souhaitez-vous acheter votre véhicule</span>
@@ -102,16 +109,28 @@ export const BrandAndlocation=({
                 className="rounded-lg border border-gray-300 h-12 px-4 outline-none focus:border-gray-500"
             />
             <div className="flex mt-1 gap-1">{selectedLocation.length>0&&
-            selectedLocation.map((reg,index)=>(
-            <span key={index} className="rounded-full relative group bg-colorOne px-2 py-1 text-white bg-opacity-50 hover:bg-opacity-80">
+           <div className="flex flex-wrap gap-2 max-w-full max-h-[10rem] overflow-x-auto">
+            {selectedLocation.map((reg, index) => (
+                <span key={index} className="rounded-full relative group bg-colorOne px-2 text-sm py-1 text-white bg-opacity-50 hover:bg-opacity-80 whitespace-nowrap">
                 {reg.name}
-                <span className="text-xs ml-1">({reg.type})</span>
-                <svg onClick={()=>{setSelectedLocation((prv)=>prv.filter((b) => b.id !== reg.id))}} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-3 absolute opacity-0 group-hover:opacity-100 duration-200 transition-all top-0 right-0 cursor-pointer
-                bg-white rounded-full text-gray-700 ">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                <span className="text-tiny ml-1">({reg.type})</span>
+                <svg
+                    onClick={() => {
+                    setSelectedLocation((prv) => prv.filter((b) => b.id !== reg.id));
+                    }}
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="size-3 absolute opacity-0 group-hover:opacity-100 duration-200 transition-all top-0 right-0 cursor-pointer
+                    bg-white rounded-full text-gray-700"
+                >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                 </svg>
-            </span>
-            ))
+                </span>
+            ))}
+            </div>
             }</div>
             {locationDropDown&&<DropDown notEff={['locationDropDown']} setIsShow={(data:boolean)=>{setLocationDropDown(data);setlocationViwe('region')}}>
                 <div className=" absolute py-2 bg-white w-full flex flex-col max-h-44 overflow-auto border-gray-300 border rounded-lg top-[50px] px-1 shadow-lg">
@@ -202,7 +221,7 @@ export const BrandAndlocation=({
             </div>
         </div>
         
-        <span className=" mt-2 text-lg font-semibold">Marque du véhicule</span>
+        {displayBrands&&<><span className=" mt-2 text-lg font-semibold">Marque du véhicule</span>
         <div className="relative flex flex-col">
         <input
             id='brandDropDown'
@@ -238,7 +257,7 @@ export const BrandAndlocation=({
             </div>
         </DropDown>}
         
-        </div>
+        </div></>}
         
         <div className="grid grid-cols-2 mt-6">
         <span className="w-full flex justify-start">

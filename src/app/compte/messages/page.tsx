@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import Header from "@/components/home/Header";
 import { useRouter } from "next/navigation";
 import Footer from "@/components/home/Footer";
+import { UserAvatar } from "@/components/all/UserAvatar";
 
 type ConversationItem = {
   id: number;
@@ -14,10 +15,14 @@ type ConversationItem = {
     id: number;
     image: {url:string} | null;
     username: string;
+    fullName:string,
+    activeAt:Date,
+    phone:string,
     email: string;
     isOnline: boolean;
   };
   ad: {
+    id:number
     title: string;
     price: number;
     media: {
@@ -68,6 +73,7 @@ export default function ChatPage() {
   const [hasMoreUsers, setHasMoreUsers] = useState(true);
   const userListRef = useRef<HTMLDivElement>(null);
   const userLockRef = useRef(false);
+  const selectedConversationObj = conversation?.find((c) => c.id === selectedConversation);
 
   const socketRef = useRef<Socket | null>(null);
   const selectedConversationIdRef = useRef<number | null>(null);
@@ -380,24 +386,27 @@ export default function ChatPage() {
 
   if(!session)return(<div>loading</div>)
   return (
-    <><Header session={session.data} router={router} />
-    <div className="flex h-screen bg-gray-100 text-gray-800 overflow-hidden relative">
+  <div className="h-screen">
+    <Header session={session.data} />
+    <div className="flexh-[56%] bg-gray-100 text-gray-800 overflow-hidden relative">
+
       {/* Mobile Sidebar Overlay */}
       <div
-        className={`fixed inset-0 bg-black bg-opacity-30 z-30 transition-opacity md:hidden ${mobileSidebarOpen
-          ? "opacity-100 pointer-events-auto"
-          : "opacity-0 pointer-events-none"}`}
-        onClick={() => setMobileSidebarOpen(false)} />
+        className={`fixed  bg-opacity-30 z-10 transition-opacity md:hidden ${
+          mobileSidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setMobileSidebarOpen(false)}
+      />
 
-      {/* Sidebar - Users List */}
+      {/* Sidebar */}
       <aside
         ref={userListRef}
-        className={`fixed md:static top-0 left-0 h-full md:h-auto z-40 bg-white border-r border-gray-200 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 w-72 transform transition-transform duration-300 ${mobileSidebarOpen
-          ? "translate-x-0"
-          : "-translate-x-full md:translate-x-0"}`}
+        className={`fixed md:static top-0 left-0 h-full md:h-auto z-40 bg-white border-r border-gray-200 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 w-72 transform transition-transform duration-300 ${
+          mobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        }`}
       >
         <div className="p-4 font-semibold text-xl border-b border-gray-200 flex justify-between items-center">
-          Sélectionner
+          Conversations
           <button
             className="md:hidden text-sm text-gray-500"
             onClick={() => setMobileSidebarOpen(false)}
@@ -405,51 +414,75 @@ export default function ChatPage() {
             ✕
           </button>
         </div>
+
         {conversation?.map((c, idx) => {
           const isSelected = selectedConversation === c.id;
+          const imageUrl = c.ad?.media?.[0]?.media?.url || c.user.image?.url || "/default-avatar.png";
+          const name = c.ad?.title || c.user.fullName;
+
           return (
             <div
               key={idx}
               onClick={() => {
                 setMobileSidebarOpen(false);
                 getMessages(c.id);
-              } }
-              className={`flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-blue-50 ${isSelected ? "bg-blue-100 font-semibold" : ""} border-b border-gray-100`}
+              }}
+              className={`flex relative items-center gap-3 px-4 py-3 cursor-pointer hover:bg-blue-50 ${
+                isSelected ? "bg-blue-100 font-semibold" : ""
+              } border-b border-gray-100`}
             >
               <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 border">
-                {c.user.image?.url ? (
-                  <Image
-                    src={c.user.image?.url}
-                    alt="avatar"
-                    width={48}
-                    height={48} />
-                ) : (
-                  <div className="flex items-center justify-center w-full h-full text-gray-700 font-bold text-sm uppercase">
-                    {c.user.username.slice(0, 2)}
-                  </div>
-                )}
+                {!c.ad?c.user?.image?.url?<Image
+                      src={c.user?.image?.url}
+                      alt={c.user.username}
+                      width={48}
+                      height={48}
+                      className="w-6 h-6 rounded-full object-cover"
+                    />:
+                    <UserAvatar height={48} userName={c.user?.username || 'A'} />
+                    :
+                    <Image src={imageUrl} alt="avatar" width={100} height={100} className="object-cover h-[48px] rounded-full" />}
               </div>
               <div className="flex-1 truncate">
-                <div className="font-medium">{c.user.username}</div>
-                <div className="text-xs text-gray-400">Annonce supprimée</div>
+                <div className="font-medium truncate">{name}</div>
+                <div className="text-xs text-gray-400">
+                  {c.ad?.title ? "Annonce active" : "Profil utilisateur"}
+                </div>
               </div>
               {unread[c.id] && (
-                <span className="text-xs text-white bg-red-500 px-2 py-0.5 rounded-full">
-                  New
-                </span>
+                <span className="text-xs text-white bg-red-500 px-2 py-0.5 rounded-full">Nouveau</span>
               )}
+                  {c.ad&&<div 
+                   className="absolute bottom-2 right-2 flex items-center gap-2 px-2 py-1 rounded-lg">
+                    {c.user?.image?.url?<Image
+                      src={c.user?.image?.url}
+                      alt={c.user.username}
+                      width={20}
+                      height={20}
+                      className="w-6 h-6 rounded-full object-cover"
+                    />:
+                    <UserAvatar height={20} userName={c.user?.username || 'A'} />
+                    }
+                    <div className="text-tiny text-gray-700">
+                      <p className="font-semibold">{c.user.fullName}</p>
+                    </div>
+                  </div> }            
             </div>
           );
         })}
       </aside>
 
-      {/* Middle - Chat View */}
-      <section className="flex flex-col flex-1 bg-white border-r border-gray-200">
-        {/* Header */}
+      {/* Chat View */}
+      <section className="flex max-h-full flex-col flex-1 border-r border-gray-200">
+        {/* Chat Header */}
         <div className="px-6 py-4 border-b border-gray-200 font-semibold text-lg flex justify-between items-center">
-          {selectedConversation
-            ? `Chat avec ${selectedConversation}`
-            : "Sélectionner un utilisateur"}
+          {selectedConversation ? (
+            <a href={`/${(selectedConversationObj?.ad)?`ad/${selectedConversationObj.ad.id}`:`user/${selectedConversationObj?.user.id}`}`} className="hover:underline cursor-pointer">
+              {selectedConversationObj?.ad?.title || selectedConversationObj?.user?.username}
+            </a>
+          ) : (
+            "Sélectionner une conversation"
+          )}
           <button
             className="md:hidden text-sm text-blue-500"
             onClick={() => setMobileSidebarOpen(true)}
@@ -476,13 +509,13 @@ export default function ChatPage() {
                 data-id={msg.id}
                 ref={(el) => {
                   messageRefs.current[msg.id] = el;
-                } }
+                }}
                 className={`mb-4 flex ${isMine ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-xs px-4 py-2 rounded-2xl shadow ${isMine
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-800"}`}
+                  className={`max-w-xs px-4 py-2 rounded-2xl shadow ${
+                    isMine ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-800"
+                  }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                   <div className="text-[10px] mt-1 text-right opacity-70">
@@ -507,7 +540,7 @@ export default function ChatPage() {
           <div ref={topSentinelRef} className="h-1" />
         </div>
 
-        {/* Chat Input */}
+        {/* Input */}
         <div className="px-6 py-4 border-t border-gray-200 flex items-center gap-2 bg-gray-50">
           <input
             type="text"
@@ -515,7 +548,8 @@ export default function ChatPage() {
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
             placeholder="Écrivez votre message"
-            className="flex-1 px-4 py-2 rounded-full border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none" />
+            className="flex-1 px-4 py-2 rounded-full border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none"
+          />
           <button
             onClick={sendMessage}
             className="p-2 bg-orange-500 text-white rounded-full hover:bg-orange-600 transition"
@@ -525,37 +559,64 @@ export default function ChatPage() {
         </div>
       </section>
 
-      {/* Right - User Info */}
-      {selectedConversation && (
+      {/* Right Panel */}
+      {selectedConversationObj?.user && (
         <aside className="hidden lg:flex flex-col w-72 bg-white border-l border-gray-200 p-4">
           <div className="flex flex-col items-center text-center">
-            <div className="w-20 h-20 rounded-full overflow-hidden border bg-gray-200 mb-2">
-              <Image
-                src={"/default-avatar.png"}
-                alt="avatar"
-                width={80}
-                height={80} />
+            <div className="w-24 h-24 rounded-full overflow-hidden border bg-gray-200 mb-3">
+              {selectedConversationObj.user.image?.url ? (
+                <Image
+                  src={selectedConversationObj.user.image.url}
+                  alt="User"
+                  width={96}
+                  height={96}
+                  className="object-cover"
+                />
+              ) : (
+                <UserAvatar height={96} userName={selectedConversationObj.user.username} />
+              )}
             </div>
-            <h3 className="font-semibold text-lg">{selectedConversation}</h3>
-            <div className="text-sm text-gray-500 mt-1">Profil recommandé</div>
+
+            <a
+              href={`/user/${selectedConversationObj.user.id}`}
+              className="text-lg font-bold text-gray-800 cursor-pointer"
+            >
+              {selectedConversationObj.user.fullName}
+            </a>
+
+            <a
+              href={`/user/${selectedConversationObj.user.id}`}
+              className="text-sm text-gray-500 underline cursor-pointer"
+            >
+              @{selectedConversationObj.user.username}
+            </a>
+
+            <div className="text-xs text-gray-400 mt-1">
+              {selectedConversationObj.user.isOnline ? "En ligne" : "Actif il y a 6 min"}
+            </div>
+            <a
+              href={`mailto:${selectedConversationObj.user.email}`}
+              className="w-full block text-sm py-2 hover:underline"
+            >
+              {selectedConversationObj.user.email}
+            </a>
           </div>
 
-          <div className="mt-6 border border-blue-200 rounded p-4 bg-blue-50 text-sm">
-            <h4 className="font-semibold mb-1">
-              Demande de rapport d’historique
-            </h4>
-            <p className="text-gray-700 mb-3">
-              Rassurez votre acheteur potentiel en ajoutant le rapport
-              d’historique de votre véhicule.
-            </p>
-            <button className="text-sm font-medium text-blue-600 border border-blue-600 px-3 py-1.5 rounded hover:bg-blue-100 transition">
-              Créer mon rapport d’historique
+          <div className="mt-6 space-y-3 w-full text-center">
+            <button className="w-full shadow-md font-semibold text-lg border rounded-xl py-2">
+              +33 {formatPhone(selectedConversationObj.user.phone)}
             </button>
+            
           </div>
         </aside>
       )}
+
     </div>
-    <Footer/>
-    </>
-  );
+    <Footer />
+  </div>
+);
+
+}
+function formatPhone(phone: string): string {
+  return phone.replace(/(\d{2})(?=\d)/g, "$1 ").trim();
 }

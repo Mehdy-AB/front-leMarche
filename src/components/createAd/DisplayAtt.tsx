@@ -7,7 +7,7 @@ import ControlledAttributeField from './ControlledAttributeField';
 
 export default function DisplayAtt() {
   const { control, watch } = useFormContext<CreateAdsFormValues>();
-  const categoryId = watch('categoryId');
+  const typeId = watch('typeId');
   const [data, setData] = useState<any>();
   const [loader, setLoader] = useState(true);
 
@@ -17,8 +17,9 @@ export default function DisplayAtt() {
   });
 
   useEffect(() => {
+    setData(null)
     const fetchAttributes = async () => {
-      const result = await getAttributes(categoryId);
+      const result = await getAttributes(typeId);
       if (result?.data) {
         setData(result);
         const initialAttributes = result.data.map((attribute) => ({
@@ -33,18 +34,18 @@ export default function DisplayAtt() {
       }
     };
     fetchAttributes();
-  }, [categoryId, replace]);
+  }, [typeId, replace]);
 
   return (
     <div className="flex relative flex-col pb-4">
       <h2 className="text-xl font-semibold mb-6 border-l-4 pl-2 border-colorOne">Attributes</h2>
-      {loader?
+      {!data?
       <div className=' flex justify-center items-center'>
         <span className=''>Sélectionner une catégorie pour accès au attributes .</span>
       </div>
       :<div className="grid grid-cols-1 md:grid-cols-2 px-2">
       {fields.map((field, idx) => {
-        const originalAttr = data?.data.find((a) => a.id === field.attributeId);
+        const originalAttr = data?.data?.find((a) => a.id === field.attributeId);
 
         return (
           <ControlledAttributeField

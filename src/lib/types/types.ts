@@ -13,11 +13,13 @@ export type categories ={
     id: number; 
     name: string,
     url: string,
+    
 }[]
 
 export type types ={ 
     id: number; 
     name: string,
+    includeBrands:boolean;
     url: string,
     categoryId: number
     }[]

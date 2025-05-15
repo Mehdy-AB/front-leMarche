@@ -183,11 +183,11 @@ export const createAdsSchema = z
 
     brandId: z
       .number({ invalid_type_error: 'La marque est requise.' })
-      .min(0, { message: 'Veuillez sélectionner une marque.' }),
+      .min(0, { message: 'Veuillez sélectionner une marque.' }).optional(),
 
     modelId: z
       .number({ invalid_type_error: 'Le modèle est requis.' })
-      .min(0, { message: 'Veuillez sélectionner un modèle.' }),
+      .min(0, { message: 'Veuillez sélectionner un modèle.' }).optional(),
 
     locationId: z
       .number({ invalid_type_error: 'La localisation est requise.' })
@@ -267,11 +267,11 @@ export const createAdsSchema = z
 
     brandId: z
       .number({ invalid_type_error: 'La marque est requise.' })
-      .min(0, { message: 'Veuillez sélectionner une marque.' }),
+      .min(0, { message: 'Veuillez sélectionner une marque.' }).optional(),
 
     modelId: z
       .number({ invalid_type_error: 'Le modèle est requis.' })
-      .min(0, { message: 'Veuillez sélectionner un modèle.' }),
+      .min(0, { message: 'Veuillez sélectionner un modèle.' }).optional(),
 
     locationId: z
       .number({ invalid_type_error: 'La localisation est requise.' })

@@ -1,5 +1,5 @@
 'use client'
-import {  getBrandsByname, getRegions } from "@/lib/req/ghost"
+import {  getBrandsByname, getRegions, getTypesByid, getTypesByname } from "@/lib/req/ghost"
 import { brands, region } from "@/lib/types/types"
 import { BrandAndlocation } from "@/components/search/quickSearch/BrandAndlocation"
 import { AnimatePresence, motion } from "framer-motion"
@@ -30,6 +30,7 @@ export default function QuickSearch(){
     const [isLoading,setIsLoading] = useState(true);
     const [etape,setEtape] = useState<0|1>(0)
     const [typeId,setTypeId]=useState<number|null>(null)
+    const [displayBrands,setDisplayBrands]=useState(false)
 
     const onSubmit=(data:FilterDto)=>{
       const param = filterToQueryParams(data)
@@ -37,7 +38,7 @@ export default function QuickSearch(){
     }
 
     const components = [
-            <BrandAndlocation submit={(data)=>{
+            <BrandAndlocation displayBrands={displayBrands} submit={(data)=>{
               if(!typeId){
                 router.push('/')
                 return;
@@ -46,7 +47,7 @@ export default function QuickSearch(){
               setValue('type',{id:typeId,  brand:data.brand})
               setEtape(1);
             }} goBack={()=>router.push('/')} brands={brands as brands} region={region as region}/>,
-            <Filter brandsId={getValues('type')?.brand?.map(b=>b.id)||[]} typeId={typeId || 1} handleSubmit={handleSubmit(onSubmit)} goBack={()=>setEtape(0)} />
+            <Filter displayBrands={displayBrands} brandsId={getValues('type')?.brand?.map(b=>b.id)||[]} typeId={typeId || 1} handleSubmit={handleSubmit(onSubmit)} goBack={()=>setEtape(0)} />
         ]
     const pageDescription =['Indiquez votre région et la marque du véhicule pour voir les annonces les plus pertinentes près de chez vous.']
   
@@ -56,17 +57,30 @@ export default function QuickSearch(){
             return;
         }
         const fetchdata= async () => {
+          const fetchType = async () => {
+            const data = await getTypesByid(1);
+            if(data){
+              const typess = data.find(t=>t.name==type)||null;
+              if(!typess){
+                router.back();
+                return;
+              }
+              setTypeId(typess?.id)
+              if(typess?.includeBrands)
+                setDisplayBrands(true)
+            }
+          };
             const fetchCategories = async () => {
                 const brands = await getBrandsByname(type);
-                 if (!brands|| brands.length ===0) router.push('/');
-                 else {setBrands(brands);setTypeId(brands[0].typeId)}
+                 if (brands&& brands.length >0) 
+                  {setBrands(brands);setTypeId(brands[0].typeId)}
             };
             const fetchDepartment= async () => {
                 const region = await getRegions();
                 if(region)
                 setRegion(region)
             };
-
+            await fetchType();
             await fetchCategories();
             await fetchDepartment();
         };

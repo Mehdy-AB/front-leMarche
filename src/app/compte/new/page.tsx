@@ -24,6 +24,7 @@ const newAd = () => {
         if (session.status === "unauthenticated") {  
             router.push("/api/auth/signin");
         }
+        
     }, [session]);
    
     const form = useForm<CreateAdsFormValues>({

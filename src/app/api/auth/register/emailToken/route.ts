@@ -7,7 +7,6 @@ export async function POST(req: NextRequest) {
       const json = await req.json();
       const isValidCode = otpSchema.safeParse(json);
       if(!isValidCode.success){
-        console.log(json)
         return NextResponse.json({ error: 'invalide code' }, { status: 400 });
       }
       const res = await fetch(`${process.env.Backend_URL}/user/auth/verify-email-code`,

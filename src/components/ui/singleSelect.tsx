@@ -21,7 +21,7 @@ export default function SingleSelect({ options, selected, onChange, placeholder 
     <div className='flex flex-col w-full'>
         <Select
           value={selected?.name ?? ""}
-          onValueChange={(value) => {onChange(options.find(option => option.name === value));console.log(value)}}
+          onValueChange={(value) => {onChange(options.find(option => option.name === value))}}
         >
           <SelectTrigger>
             <SelectValue placeholder={placeholder} />

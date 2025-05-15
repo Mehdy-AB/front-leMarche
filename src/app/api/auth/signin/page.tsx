@@ -101,7 +101,7 @@ const SignupPage = () => {
                       <span className="mt-1  text-xs underline cursor-pointer"  onClick={()=>{router.push('/api/auth/forget-password')}}>Mot de passe oublié</span>
                     <button type="submit" className="bg-orange-400 rounded-4xl py-3 rounded-full mt-6 font-semibold text-white">Sign in</button>
                   </form>
-                  <div className="grid grid-cols-11 items-center mt-16">
+                  {/* <div className="grid grid-cols-11 items-center mt-16">
                     <span className="w-full col-span-5 rounded bg-gray-200 h-[2px]"></span>
                     <span className="w-full col-span-1 text-center text-xl font-semibold">OR</span>
                     <span className="w-full col-span-5 rounded bg-gray-200 h-[2px]"></span>
@@ -133,7 +133,7 @@ const SignupPage = () => {
                     </svg>
                     Continue with Facebook
                   </button>
-                  </div>
+                  </div> */}
           </motion.div>
         </AnimatePresence>
 

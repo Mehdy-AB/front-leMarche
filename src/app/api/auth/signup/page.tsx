@@ -41,7 +41,7 @@ const SigninPage = () => {
       <h4 className="text-sm text-gray-500">Already have an account? 
         <a className="underline cursor-pointer" onClick={()=>{router.push('/api/auth/signin')}}> Log in</a>
       </h4>
-        <div className="mt-12">
+        <div className="mt-12 hidden lg:block">
           <div className="grid grid-cols-2 justify-start gap-8 px-[100px]">
             <span className="flex w-full">
               <span className={`${etape===0?'w-0':etape===1?'w-1/2':'w-full'} transition-all duration-500 bg-orange-400 h-[2px]`}/>

@@ -8,6 +8,7 @@ declare module "next-auth"{
             fullName: string,
             email: string,
             phone: string|null,
+            image:{url:string}
             passwordVersion: string | Date,
             createdAt: string | Date,
             lastActive: string | Date

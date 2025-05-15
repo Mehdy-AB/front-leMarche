@@ -7,7 +7,7 @@ export const CompteTypes=({etape,setEtape,setCompteType}:{
 
     return(<>
     <span className=" mt-10 text-center mb-2 text-lg font-semibold">Choisissez votre type de compte</span>
-        <div className="grid gap-20 px-5 grid-cols-2">
+        <div className="grid gap-y-2 gap-x-20 px-5  lg:grid-cols-2">
           <button onClick={()=>{setCompteType('INDIVIDUAL');setEtape(etape+1)}}
           className="w-full grid grid-cols-5 items-center px-6 gap-x-3 py-2.5 border rounded-lg text-sm font-medium hover:bg-gray-50 duration-150 active:bg-gray-300"
         >
@@ -21,8 +21,8 @@ export const CompteTypes=({etape,setEtape,setCompteType}:{
           </div>
           
         </button>
-        <button onClick={()=>{setCompteType('PROFESSIONAL');setEtape(etape+1)}}
-          className="w-full grid grid-cols-6 items-center px-6 gap-x-3 py-2.5 border rounded-lg text-sm font-medium hover:bg-gray-50 duration-150 active:bg-gray-300"
+        <button disabled onClick={()=>{setCompteType('PROFESSIONAL');setEtape(etape+1)}}
+          className="w-full grid grid-cols-6 items-center px-6 gap-x-3 py-2.5 border rounded-lg text-sm text-gray-200 font-medium hover:bg-gray-50 duration-150 active:bg-gray-300"
         >
           <svg version="1.0" id="Layer_1" xmlns="http://www.w3.org/2000/svg"
             className="size-5" viewBox="0 0 64 64" enableBackground="new 0 0 64 64" >

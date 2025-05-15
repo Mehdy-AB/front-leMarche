@@ -5,6 +5,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { OtpSchema, otpSchema } from '@/lib/validation/all.schema'
 import axiosGhost from '@/lib/req/axiosGhost'
+import { Loader } from 'lucide-react'
 
 export const OtpForm = ({
   etape,
@@ -25,7 +26,7 @@ export const OtpForm = ({
     setValue,
     getValues,
     setError,
-    formState: { errors },
+    formState: { errors,isSubmitting },
   } = useForm<OtpSchema>({
     resolver: zodResolver(otpSchema),
     defaultValues: {
@@ -131,11 +132,10 @@ export const OtpForm = ({
           Resend code
         </span>
       </div>
-      <button
-        type="submit"
-        className="bg-orange-400 w-full rounded-4xl py-3 rounded-full mt-6 font-semibold text-white"
-      >
-        Next
+      <button disabled={isSubmitting} type="submit" className="bg-orange-400 w-full disabled:bg-gray-200 rounded-4xl py-3 rounded-full mt-6 font-semibold text-white">
+      {isSubmitting?
+      <Loader/>
+      :'Next'}
       </button>
     </form>
   )

@@ -108,11 +108,11 @@ export default function UserProfilePage() {
       }
 
   return (<>
-  <Header session={session.data} router={router}/>
+  <Header session={session.data}/>
     <main className="font-poppins min-h-screen bg-gray-50">
     {isLoading?
     <><section className="bg-white border-b py-8 px-4">
-          <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-6 items-start">
+          <div className="max-w-6xl items-center mx-auto flex flex-col md:flex-row gap-6 lg:items-start">
             {/* LEFT: Profile Image & Username + Stats Skeleton */}
             <div className="flex flex-col items-center">
               <div className="w-28 h-28 rounded-full bg-gray-200 animate-pulse mb-2" />
@@ -132,7 +132,7 @@ export default function UserProfilePage() {
             </div>
 
             {/* RIGHT: Action Buttons Skeleton */}
-            <div className="flex flex-col gap-3 items-end w-full md:w-auto">
+            <div className="flex flex-col gap-3 lg:items-end w-full md:w-auto">
               <div className="h-10 w-48 bg-gray-200 animate-pulse rounded" />
               <div className="h-10 w-48 bg-gray-100 animate-pulse rounded border" />
             </div>
@@ -158,7 +158,7 @@ export default function UserProfilePage() {
             </div>
           </section></>
     :<><section className="bg-white border-b py-8 px-4">
-          <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-6 items-start">
+          <div className="max-w-6xl items-center mx-auto flex flex-col md:flex-row gap-6 lg:items-start">
             {/* LEFT: Profile Image & Username + Stats */}
             <div className="flex flex-col items-center">
               <div className="w-28 h-28 rounded-full overflow-hidden border-2 border-colorOne mb-2">
@@ -205,7 +205,7 @@ export default function UserProfilePage() {
             </div>
 
             {/* RIGHT: Actions */}
-            {!(user?.id === session.data?.user.id) && <div className="flex flex-col gap-3 items-end w-full md:w-auto">
+            {!(user?.id === session.data?.user.id) && <div className="flex flex-col gap-3 lg:items-end w-full md:w-auto">
               <button className="bg-colorOne text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-blue-700">
                 <FiMessageSquare /> Envoyer un message
               </button>

@@ -48,7 +48,7 @@ export default async function RootLayout({
       <body
         className={`${poppins.variable} flex items-center text-foreground w-full justify-center antialiased`}
       >
-        <main className="w-[80%]">
+        <main className="w-full px-2 lg:px-0 lg:w-[80%]">
         {children}
         </main>
         

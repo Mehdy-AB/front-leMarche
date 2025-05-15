@@ -11,7 +11,11 @@ export default function Category() {
     const [categories,setCategories] = useState<categories>([]);
     const [types,setTypes] = useState<types>([]);
     const [brands,setBrands] = useState<brands>([]);
-    const [modele,setModele] = useState<modeles>([]);
+    const [displayBrands,setDisplayBrands]=useState(false)
+    const [modele,setModele] = useState<{
+        id: number;
+        name: string;
+    }[]>([]);
     const [isLoading,setIsLoading] = useState(true);
     const [isLoadingT,setIsLoadingT] = useState(0);
     const categorieId = watch('categoryId');
@@ -65,7 +69,12 @@ export default function Category() {
                 setIsLoadingT(0)
             }
         };
-        fetchBrands();
+        const type=types.find(t=>t.id===typeId);
+        if(type && type?.includeBrands){
+            setDisplayBrands(true)
+            fetchBrands();
+        }else{setDisplayBrands(false)}
+        
         }
         , [typeId]);
     
@@ -75,8 +84,8 @@ export default function Category() {
         const fetchModele = async () => {
             if(brandId){
                 const modele = await getModelesByid(brandId);
-                if(modele)
-                setModele(modele)
+                if(modele&&modele[0])
+                setModele(modele[0].models)
                 setIsLoadingT(0)
             }
         };
@@ -120,7 +129,7 @@ export default function Category() {
                     onChange={(selected) => {setValue('typeId',selected?.id || 0)}}
                     placeholder={"Types"}
                 />}</>)}
-            {typeId&&<><label className="block text-sm font-medium text-gray-700 mb-1">Marques</label>
+            {typeId&&displayBrands&&<><label className="block text-sm font-medium text-gray-700 mb-1">Marques</label>
                 {isLoadingT===2?
             <span className="flex justify-center items-center py-1">
                 <Loader/>
@@ -136,7 +145,7 @@ export default function Category() {
                 onChange={(selected) => setValue('brandId',selected?.id || 0)}
                 placeholder={"Marques"}
             />}</>}
-            {brandId&&typeId&&categorieId&&<><label className="block text-sm font-medium text-gray-700 mb-1">Modeles</label>
+            {brandId&&displayBrands&&typeId&&categorieId&&<><label className="block text-sm font-medium text-gray-700 mb-1">Modeles</label>
                 {isLoadingT===3?
             <span className="flex justify-center items-center py-1">
                 <Loader/>

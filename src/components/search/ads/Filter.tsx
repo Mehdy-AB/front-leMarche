@@ -31,6 +31,7 @@ export default function FullFilter({
   const [collapsed, setCollapsed] = useState(true);
   const searchParams = useSearchParams();
   const [region, setRegion] = useState<region>([]);
+  const [displayBrands,setDisplayBrands]=useState(false)
   const [attributes, setAttributes] = useState<Attribute>({ title: 'Attributes', data: [] });
   const [selectedType, setSelectedType] = useState<{
     id: number;
@@ -46,7 +47,11 @@ export default function FullFilter({
       const data = await getTypesByid(1);
       if (data) setTypes(prv=>({...prv,types:data}));
       if(data&&parsedFilter?.type?.id){
-        setSelectedType(data.find(t=>t.id===parsedFilter?.type?.id)||null)}
+        const type = data.find(t=>t.id===parsedFilter?.type?.id)||null;
+        setSelectedType(type)
+        if(type?.includeBrands)
+          setDisplayBrands(true)
+      }
     };
     fetchCategories().then(()=>setTypes(prv=>({...prv,isloading:false})));
 
@@ -64,7 +69,7 @@ export default function FullFilter({
         setValue('type.id',parsedFilter?.type?.id)
         if (attrData) setAttributes(attrData);
       }
-      const data = await getBrandsByid(1);
+      const data = await getBrandsByid(parsedFilter?.type?.id||0);
       if (data) setBrands({isloading:false,brands:data});
     }    
     fetchDataType();
@@ -118,13 +123,22 @@ export default function FullFilter({
   }, [selectedTypeId, setValue]);
 
   useEffect(() => {
-    setSelectedType(types.types.find(t=>t.id===selectedTypeId)||null);
+    setBrands({isloading:true,brands:[]})
+    setModeles({isloding:true,modeles:[]})
+    setValue('type.brand',undefined)
+    const type = types.types.find(t=>t.id===selectedTypeId)||null
+    setSelectedType(type);
     if(!selectedTypeId2)return;
+    if(type?.includeBrands)
+          setDisplayBrands(true)
     setAttributes({ title: 'Attributes', data: [] });
     const fetchDataType=async()=>{
       const attrData = await getAttributes(selectedTypeId);
       if (attrData) setAttributes(attrData);
+      const data = await getBrandsByid(selectedTypeId);
+      if (data) setBrands({isloading:false,brands:data});
     }    
+    setCollapsed(true)
     fetchDataType();
   }, [selectedTypeId2]);
 
@@ -212,12 +226,12 @@ export default function FullFilter({
         </div><div
           className={`transition-all duration-300 ease-in-out overflow-hidden ${collapsed ? 'max-h-0' : 'max-h-[1000px]'}`}
         >
-            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${selectedTypeId===1&&'col-span-2'}`}>
+            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${displayBrands&&'col-span-2'}`}>
               <div>
                 <label className="font-semibold text-sm mb-1 block border-l-4 pl-2 border-colorOne">Prix</label>
                 <MaxMinInputPrice min={0} unit="€" />
               </div>
-              {selectedTypeId===1&&<div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+              {displayBrands&&<div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
                 <div className="flex flex-col">
                   <label className="font-semibold text-sm mb-1 border-l-4 pl-2 border-colorOne">Marque</label>
                   <BrandDropdown brands={brands} />

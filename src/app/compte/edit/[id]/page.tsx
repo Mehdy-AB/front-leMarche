@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import Category from "@/components/createAd/edit/Category";
 import axiosClient from "@/lib/req/axiosClient";
 import Loader from "@/lib/loaders/Loader";
-import { getMyAdById } from "@/lib/req/user";
+import { getMyAdById, updateAd } from "@/lib/req/user";
 import { UserAdType } from "@/lib/types/types";
 import ImageDnDEdit from "@/components/imageDnD/ImageDnDEdit";
 
@@ -83,8 +83,12 @@ const newAd = () => {
     },[])
 
     const onSubmit = async (data: UpdateAdsFormValues) => {
-        setIsSubmitting(true);
+        if(!id||!Number(id)){
+          return;
+        }
+        //setIsSubmitting(true);
         console.log(data)
+        updateAd(+id,data)
         // axiosClient.post('/user/ad', { 
         //     ...data, 
         //     attributes: data.attributes?.filter(attr => !!attr.value) 

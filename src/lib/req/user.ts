@@ -1,5 +1,5 @@
 import axiosClient from './axiosClient';
-import { CreateAdsFormValues, FilterDto, MessageFormValues } from '../validation/all.schema';
+import { CreateAdsFormValues, FilterDto, UpdateAdsFormValues } from '../validation/all.schema';
 import { MesAds, UserAdType } from '../types/types';
 export async function createAd(data: CreateAdsFormValues) {
   try {
@@ -11,15 +11,15 @@ export async function createAd(data: CreateAdsFormValues) {
   }
 }
 
-// export async function updateAd(adId: number, data: UpdateAdsFormValues) {
-//   try {
-//     const res = await axiosClient.put(`/user/ad?id=${adId}`, { data });
-//     return res.data;
-//   } catch (err) {
-//     console.error('updateAd:', err);
-//     return null;
-//   }
-// }
+export async function updateAd(adId: number, data: UpdateAdsFormValues) {
+  try {
+    const res = await axiosClient.put(`/user/ad?id=${adId}`, data );
+    return res.data;
+  } catch (err) {
+    console.error('updateAd:', err);
+    return null;
+  }
+}
 
 export async function deleteAd(adId: number) {
   try {
@@ -94,9 +94,9 @@ export async function unfollowUser(userId: number) {
   }
 }
 
-export async function sendMessage(data: MessageFormValues) {
+export async function sendMessage(data: {reciverId:number,content:string,adId:number|null}) {
   try {
-    const res = await axiosClient.post('/user/message', { data });
+    const res = await axiosClient.post('/user/message', data );
     return res.data;
   } catch (err) {
     console.error('sendMessage:', err);
