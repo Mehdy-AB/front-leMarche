@@ -11,8 +11,19 @@ import { UserNameEtape } from "@/components/auth/UserNameEtape";
 import Digitone from "@/assets/svg/Digitone.svg";
 import Digittwo from "@/assets/svg/Digittwo.svg";
 import Digitthree from "@/assets/svg/Digitthree.svg";
+import { SiretInput } from "@/components/auth/SiretInput";
+import { SiretProofUpload } from "@/components/auth/SiretProofUpload";
+import { SiretConfirmation } from "@/components/auth/SiretVerification";
 const SigninPage = () => {
-    
+    const companyData={
+    "nom": "L'ILE AUTOMOBILE",
+    "siret": "94941890900014",
+    "siren": "949418909",
+    "date_creation": "2023-02-01",
+    "etat_administratif": "A",
+    "activite_principale": "45.11Z",
+    "adresse": "41 RUE ISSOP RAVATE, 97400 SAINT-DENIS"
+}
     const [etape,setEtape] = useState(0)
     const [email,setEmail] = useState('')
     const [username,setUsername] = useState('')
@@ -25,6 +36,12 @@ const SigninPage = () => {
       <UserNameEtape key="username" setUserName={setUsername} etape={etape} setEtape={setEtape} />,
       <UserInfo key="user" username={username} compteType={compteType} token={token} etape={etape} setEtape={setEtape} />,
     ]
+    const proSteps = [
+      <SiretInput onSubmit={()=>{setEtape(1)}} key="siret" />,
+      <SiretConfirmation company={companyData} onConfirm={()=>{setEtape(2)}} onReject={()=>{setEtape(0)}} key="confirm" />,
+      <SiretProofUpload onSubmit={()=>{setEtape(0)}} key="proof" />
+    ];
+
     const { data: session } = useSession();
     const router = useRouter();
     useEffect(() => {
@@ -86,7 +103,7 @@ const SigninPage = () => {
             transition={{ duration: 0.4 }}
             className="absolute w-full h-full flex  flex-col gap-1"
           >
-            {components[etape]}
+            {proSteps[etape]}
           </motion.div>
         </AnimatePresence>
       </div>  
