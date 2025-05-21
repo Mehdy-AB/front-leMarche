@@ -1,3 +1,12 @@
+export type SiretInfo = {
+  nom: string;
+  siret: string;
+  siren: string;
+  date_creation: string;
+  etat_administratif: string;
+  activite_principale: string;
+  adresse: string;
+};
 export type category ={ 
     id: number; 
     name: string,

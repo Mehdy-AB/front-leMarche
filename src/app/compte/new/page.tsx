@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import Category from "@/components/createAd/Category";
 import axiosClient from "@/lib/req/axiosClient";
 import Loader from "@/lib/loaders/Loader";
+import VideoUpload from "@/components/imageDnD/VideoUpload";
 const newAd = () => {
     const session = useSession();
     const router = useRouter();
@@ -38,10 +39,27 @@ const newAd = () => {
 
     const onSubmit = async (data: CreateAdsFormValues) => {
         setIsSubmitting(true);
-        
-        axiosClient.post('/user/ad', { 
-            ...data, 
-            attributes: data.attributes?.filter(attr => !!attr.value) 
+        const formData = new FormData();
+
+        // Append all non-file data as a JSON string under 'dto' field
+        const { images, video, ...restData } = data;
+        formData.append('dto', JSON.stringify(restData));
+
+        // Append images if they exist
+        if (images && images.length > 0) {
+        images.forEach((image) => {
+            formData.append('images', image);
+        });
+        }
+
+        // Append video if it exists
+        if (video) {
+        formData.append('video', video);
+        }
+        axiosClient.post('/user/createAd', formData,{
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
         }).then(async res => {
             if (res.data.error) {
             setFetchError( res.data.message );
@@ -60,7 +78,7 @@ const newAd = () => {
     else
     return (
         <main>
-        <Header session={session.data} router={router}/>
+        <Header session={session.data}/>
         <section className="max-w-7xl mx-auto px-4 py-10">
         <h1 className="text-3xl border-l-8 pl-1 border-colorOne font-bold mb-8">Déposer une annonce</h1>
         {fetchError && <div className="fixed bottom-4 right-4 flex items-center w-[15%] justify-between p-5 leading-normal text-red-600 bg-red-100 rounded-lg" role="alert">
@@ -74,9 +92,8 @@ const newAd = () => {
         <FormProvider {...form}>
 
         <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
             {/* Left column - main form */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-2 order-last lg:order-first space-y-6">
 
             {/* Title */}
             <div className="border p-4 rounded-lg bg-gray-50">
@@ -106,13 +123,22 @@ const newAd = () => {
             {/* Media */}
             <div className="border p-4 rounded-lg bg-gray-50">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Photos</label>
-                <ImageDnD setImages={(data)=>setValue('images',data)} />
-                {errors.images ? (
+                <ImageDnD />
+                {errors.images?.message ? (
                         <span className="text-red-500 text-xs">
-                          {errors.images.message}
+                          {typeof errors.images.message === "string" ? errors.images.message : null}
                         </span>
                       ):
                 <p className="text-xs text-gray-500 mt-1">Ajoutez jusqu'à 10 photos de votre véhicule.</p>}
+            </div>
+            <div className="border p-4 rounded-lg bg-gray-50">
+                <VideoUpload />
+                {errors.video? (
+                        <span className="text-red-500 text-xs">
+                          {typeof errors.video.message === "string" ? errors.video.message : null}
+                        </span>
+                      ):
+                <p className="text-xs text-gray-500 mt-1">Ajoutez une vidéo pour mieux présenter votre véhicule (optionnel).</p>}
                 
             </div>
             
@@ -130,6 +156,9 @@ const newAd = () => {
                     <p className="text-xs text-gray-500 mt-1">Sélectionnez les caractéristiques de votre véhicule.</p>
                 )}
             </div>
+            <button type="submit" disabled={!!isSubmitting} className="w-full block lg:hidden disabled:bg-gray-300 bg-colorOne text-white py-3 rounded-lg font-semibold hover:bg-orange-600 transition">
+                {!!isSubmitting?<Loader/>:'Publier l’annonce'}
+            </button>
             </div>
 
             {/* Right column - status & org */}
@@ -183,7 +212,7 @@ const newAd = () => {
                 (<p className="text-xs text-gray-500 mt-1">Cela aide à mieux classer votre annonce.</p>)}
             </div>
 
-            <button type="submit" disabled={!!isSubmitting} className="w-full disabled:bg-gray-300 bg-colorOne text-white py-3 rounded-lg font-semibold hover:bg-orange-600 transition">
+            <button type="submit" disabled={!!isSubmitting} className="w-full hidden lg:block disabled:bg-gray-300 bg-colorOne text-white py-3 rounded-lg font-semibold hover:bg-orange-600 transition">
                 {!!isSubmitting?<Loader/>:'Publier l’annonce'}
             </button>
             </div>

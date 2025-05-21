@@ -2,10 +2,11 @@
 import { signIn, useSession } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { emailSchema, LoginDto, loginSchema, phoneSchema, nameSchema } from "@/lib/validation/all.schema";
+import { LoginDto, loginSchema } from "@/lib/validation/all.schema";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import Loader from "@/lib/loaders/Loader";
 
 const SignupPage = () => {
   const {
@@ -99,7 +100,11 @@ const SignupPage = () => {
                         </span>
                       )}
                       <span className="mt-1  text-xs underline cursor-pointer"  onClick={()=>{router.push('/api/auth/forget-password')}}>Mot de passe oublié</span>
-                    <button type="submit" className="bg-orange-400 rounded-4xl py-3 rounded-full mt-6 font-semibold text-white">Sign in</button>
+                    <button type="submit" disabled={isSubmitting} className="bg-orange-400 disabled:bg-gray-200 rounded-4xl py-3 rounded-full mt-6 font-semibold text-white">
+                      {isSubmitting?
+                      <Loader/>
+                      :'Sign in'}
+                      </button>
                   </form>
                   {/* <div className="grid grid-cols-11 items-center mt-16">
                     <span className="w-full col-span-5 rounded bg-gray-200 h-[2px]"></span>

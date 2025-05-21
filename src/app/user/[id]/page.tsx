@@ -206,7 +206,7 @@ export default function UserProfilePage() {
 
             {/* RIGHT: Actions */}
             {!(user?.id === session.data?.user.id) && <div className="flex flex-col gap-3 lg:items-end w-full md:w-auto">
-              <button className="bg-colorOne text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-blue-700">
+              <button className="bg-colorOne text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-colorOne/80">
                 <FiMessageSquare /> Envoyer un message
               </button>
 

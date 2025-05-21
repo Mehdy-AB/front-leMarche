@@ -3,16 +3,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { OtpSchema, otpSchema } from '@/lib/validation/all.schema'
+import { OtpSchemaPhone, otpSchemaPhone } from '@/lib/validation/all.schema'
 import axiosGhost from '@/lib/req/axiosGhost'
 import { Loader } from 'lucide-react'
 
-export const OtpForm = ({
+export const OtpFormPhone = ({
   setEtape,
-  email,
+  phone,
   setToken
 }: {
-  email:string
+  phone:string
   setToken:React.Dispatch<React.SetStateAction<string>>
   setEtape: React.Dispatch<React.SetStateAction<number>>
 }) => {
@@ -25,11 +25,11 @@ export const OtpForm = ({
     getValues,
     setError,
     formState: { errors,isSubmitting },
-  } = useForm<OtpSchema>({
-    resolver: zodResolver(otpSchema),
+  } = useForm<OtpSchemaPhone>({
+    resolver: zodResolver(otpSchemaPhone),
     defaultValues: {
       otp: new Array(6).fill(''),
-      email:email
+      phone:phone
     },
   })
 
@@ -73,31 +73,10 @@ export const OtpForm = ({
     const nextIdx = Math.min(otpArray.length, 5)
     inputRefs.current[nextIdx]?.focus()
   }
-  const [timer, setTimer] = useState(60);
 
-  useEffect(() => {
-    if (timer === 0) return;
-    const interval = setInterval(() => {
-      setTimer((prev) => prev - 1);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [timer]);
-
-    const resend = () => {
-      if(timer>0)return
-      setTimer(60)
-      axiosGhost.post('/user/auth/email-code',{email}).then(res=>{
-        if(res.data.error){
-          setError('otp', { message: res.data.message })
-          return;
-        }
-      }).catch(e=>{
-        setError('otp', { message: e.response?.data?.message || 'Email is invalide' })
-      })
-    }
-  const onSubmit = (data: OtpSchema) => {
-    axiosGhost.post('/user/auth/verify-email-code',{
-                                                      email:data.email,
+  const onSubmit = (data: OtpSchemaPhone) => {
+    axiosGhost.post('/user/auth/verify-phone-code',{
+                                                      phone:data.phone,
                                                       code:data.otp.join('')
                                                     }).then(res=>{
       if(res.data.error){
@@ -105,18 +84,46 @@ export const OtpForm = ({
         return;
       }
       setToken(res.data.token)
-      setEtape(2)
+      setEtape(4)
     }).catch(e=>{
       setError('otp', { message: e.response.data.message || 'code is invalide' })
     })
 
   }
 
+   const [timer, setTimer] = useState(60);
+  
+    useEffect(() => {
+      if (timer === 0) return;
+      const interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+      return () => clearInterval(interval);
+    }, [timer]);
+  
+      const resend = () => {
+        if(timer>0)return
+        setTimer(60)
+        axiosGhost
+        .post("/user/auth/send-phone-code", {phone})
+        .then((res) => {
+          if (res.data.error) {
+            setError("phone", { message: res.data.message });
+            return;
+          }
+        })
+        .catch((e) => {
+          setError("phone", {
+            message: e.response?.data?.message || "Numéro invalide",
+          });
+        });
+      }
+      
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col items-center w-full">
       <div id="otp-form" className="flex flex-col w-full items-center gap-2">
         <span className="mt-10 text-lg font-semibold">
-          Saisissez le code reçu à l’adresse e‑mail
+          Saisissez le code reçu par SMS au numéro {phone}
         </span>
         <div className="flex gap-2">
           {[...Array(6)].map((_, idx) => (

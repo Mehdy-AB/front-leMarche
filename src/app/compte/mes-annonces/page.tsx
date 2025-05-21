@@ -66,7 +66,7 @@ export default function ProductsPage() {
 
   return (
     <main className="font-poppins bg-gray-50 min-h-screen">
-      <Header session={session?.data} router={router} />
+      <Header session={session?.data} />
 
       <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6">
         {/* Main Ads Section */}
@@ -74,7 +74,7 @@ export default function ProductsPage() {
           <h2 className="text-2xl font-bold mb-4 text-gray-800">Mes Annonces</h2>
 
           {ads.length>0?ads.map((ad) => (
-            <><div key={ad.id} className="relative">
+            <div key={ad.id} className="relative">
               <Link
                 href={`http://localhost:3000/ad/${ad.id}`}
                 key={ad.id}
@@ -187,7 +187,7 @@ export default function ProductsPage() {
                 </Popover>
               </div>
 
-            </div></>
+            </div>
           )):
           loading?
            [1,2].map((_,idx)=><div key={idx} className="bg-white border rounded-xl shadow-sm flex flex-col sm:flex-row overflow-hidden animate-pulse">

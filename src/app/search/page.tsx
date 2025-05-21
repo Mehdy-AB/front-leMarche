@@ -54,7 +54,7 @@ export default function ProductsPage() {
 
   return (
     <main className="font-poppins">
-      <Header session={session?.data} router={router} />
+      <Header session={session?.data} />
         {/* Page Header */}
         <section className="border-b border-blue-100 py-6">
           <div className="max-w-7xl mx-auto px-4 text-center">

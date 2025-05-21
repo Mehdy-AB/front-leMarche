@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// app/api/ghost/type/route.ts
+// app/api/ghost/type/one/route.ts
 export async function GET(req: NextRequest) {
     try {
       const url = new URL(req.url);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// app/api/ghost/category/[id]/route.ts
+// app/api/ghost/category/one/route.ts
 export async function GET(req: NextRequest) {
     try {
       const url = new URL(req.url);

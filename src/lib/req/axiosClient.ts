@@ -1,9 +1,9 @@
-import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
+import axios, { AxiosError, AxiosResponse } from "axios";
 import { jwtDecode } from "jwt-decode";
 import { getSession, signOut } from "next-auth/react";
 
 const axiosClient = axios.create({
-  baseURL: "/api",
+  baseURL: "http://localhost:8000",
 });
 
 let isRefreshing = false;
@@ -36,7 +36,7 @@ const refreshToken = async (): Promise<string> => {
     throw new Error("Refresh token has expired");
   }
 
-  const response = await axios.post("/api/auth/refresh", null, {
+  const response = await axios.post("/user/auth/refresh", null, {
     headers: {
       Authorization: `Refresh ${refreshToken}`,
     },

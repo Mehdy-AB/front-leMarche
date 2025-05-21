@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// app/api/ghost/location/city/route.ts
+// app/api/ghost/location/route.ts
 export async function GET(req: NextRequest) {
     try {
       const name = new URL(req.url).searchParams.get('name');

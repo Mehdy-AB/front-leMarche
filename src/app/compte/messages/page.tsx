@@ -1,28 +1,28 @@
-"use client";
+// app/chat/page.tsx
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import io, { Socket } from "socket.io-client";
-import Image from "next/image";
-import { useSession } from "next-auth/react";
-import Header from "@/components/home/Header";
-import { useRouter } from "next/navigation";
-import Footer from "@/components/home/Footer";
-import { UserAvatar } from "@/components/all/UserAvatar";
+import { useSession } from 'next-auth/react';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import Header from '@/components/home/Header';
+import Footer from '@/components/home/Footer';
+import { UserAvatar } from '@/components/all/UserAvatar';
+import Image from 'next/image';
+import { useSocket } from '@/app/socket-provider';
 
 type ConversationItem = {
   id: number;
   user: {
     id: number;
-    image: {url:string} | null;
+    image: { url: string } | null;
     username: string;
-    fullName:string,
-    activeAt:Date,
-    phone:string,
+    fullName: string;
+    activeAt: Date;
+    phone: string;
     email: string;
     isOnline: boolean;
   };
   ad: {
-    id:number
+    id: number;
     title: string;
     price: number;
     media: {
@@ -31,591 +31,588 @@ type ConversationItem = {
       };
     }[];
   };
-  time: string; // or use Date if it's parsed: `time: Date;`
+  time: string;
 };
 
-
 type Message = {
-    conversation: {
-        id: number;
-        activeAt: Date;
-        adId: number;
-        senderId: number;
-        receiverId: number;
-    };
-} & {
-    id: number;
-    senderId: number;
-    conversationId: number;
-    content: string;
-    read: boolean;
-    sentAt: Date;
-}
+  id: number;
+  senderId: number;
+  conversationId: number;
+  content: string;
+  read: boolean;
+  sentAt: Date;
+};
 
 export default function ChatPage() {
-  const session = useSession();
-  const router = useRouter()
+  const { socket, isConnected } = useSocket();
+  const { data: session } = useSession();
   const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
-  const [conversation, setConversation] = useState<ConversationItem[]>([]);
+  const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [unread, setUnread] = useState<Record<string, boolean>>({});
-  const [isInitialLoad, setIsInitialLoad] = useState(false);
-  const [conversationKey, setConversationKey] = useState(0);
+  const [unread, setUnread] = useState<Record<number, boolean>>({});
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [page, setPage] = useState(0);
-
-  const [userPage, setUserPage] = useState(0);
-  const [loadingUsers, setLoadingUsers] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [isSending, setIsSending] = useState(false);
 
-  const [hasMoreUsers, setHasMoreUsers] = useState(true);
-  const userListRef = useRef<HTMLDivElement>(null);
-  const userLockRef = useRef(false);
-  const selectedConversationObj = conversation?.find((c) => c.id === selectedConversation);
-
-  const socketRef = useRef<Socket | null>(null);
-  const selectedConversationIdRef = useRef<number | null>(null);
   const messageContainerRef = useRef<HTMLDivElement>(null);
-  const messageRefs = useRef<Record<number, HTMLDivElement | null>>({});
-  const fetchLockRef = useRef(false);
-  useEffect(()=>{
-    console.log(conversation)
-  },[conversation])
-  const markMessagesAsSeen = () => {
-    if (!selectedConversation || !socketRef.current) return;
+  const selectedConversationObj = conversations.find((c) => c.id === selectedConversation);
+  const observerRef = useRef<IntersectionObserver>();
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const scrollPositionRef = useRef<number>(0);
 
-    socketRef.current.emit("markAsSeen", { conversationId: selectedConversation });
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.conversationId === selectedConversation ? { ...m, seen: true } : m
-      )
-    );
-  };
+  // Check scroll position
+  const checkScrollPosition = useCallback(() => {
+    if (!messageContainerRef.current) return;
+    
+    const { scrollTop } = messageContainerRef.current;
+    const atBottom = scrollTop === 0; // Because we're using flex-col-reverse
+    
+    setIsAtBottom(atBottom);
+    setShowScrollButton(!atBottom);
+    
+    // Mark messages as seen if at bottom
+    if (atBottom && selectedConversation) {
+      markMessagesAsSeen(selectedConversation);
+    }
+  }, [selectedConversation]);
 
+  // Initialize socket listeners
   useEffect(() => {
-    if (!session || !session.data) return;
+    if (!socket || !session) return;
 
-    const socket = io('http://localhost:8000', {
-      auth: { token: session.data.backendToken.accessToken },
-      transports: ['websocket'],
-    });
-
-    socketRef.current = socket;
-
-   socket.on("connect", () => {
-      socket.on("ready", () => {
-        socket.emit("getContacts");
-      });
-    });
-
-
-    socket.on("contacts", (data: { conversation: ConversationItem[]; hasMore: boolean }) => {
-      if (userPage === 0) {
-        setConversation(data.conversation);
-      } else {
-        setConversation((prev) => [
-          ...prev,
-          ...data.conversation,
-        ]);
+    const onContacts = (data: { conversation: ConversationItem[]; hasMore: boolean }) => {
+      setConversations(data.conversation);
+      setInitialLoadComplete(true);
+      
+      // If we have a selected conversation but no messages, load them
+      if (selectedConversation && messages.length === 0) {
+        loadMessages(selectedConversation);
       }
-      setHasMoreUsers(data.hasMore);
-      setLoadingUsers(false);
-      userLockRef.current = false;
-    });
+    };
 
-    socket.on("receiveMessage", (message: Message) => {
-      if (!session || !session.data) return;
-      const senderId = message.senderId;
-
-      const isFromMe = senderId === session.data.user.id;
-
-      const isCurrentChat = message.conversationId === selectedConversationIdRef.current;
+    const onReceiveMessage = (message: Message) => {
+      const isCurrentChat = message.conversationId === selectedConversation;
+      const isFromMe = message.senderId === session.user.id;
 
       if (!isCurrentChat) {
         setUnread((prev) => ({ ...prev, [message.conversationId]: true }));
         new Audio("/notification.mp3").play();
-        moveUserToTop(message.conversationId);
+        moveConversationToTop(message.conversationId);
       }
 
-      // Append message if relevant to this user
       setMessages((prev) => [message, ...prev]);
-
-      const container = messageContainerRef.current;
-      if (isCurrentChat && container) {
-        const alreadyAtBottom = isAtBottom(container);
-
-        requestAnimationFrame(() => {
-            // Always scroll to bottom if already at bottom
-          if (alreadyAtBottom) {
-            container.scrollTop = 0;
-            markMessagesAsSeen();
-          }
-
-            // ✅ If you're the receiver and already at bottom, mark seen immediately
-          if (!isFromMe && alreadyAtBottom) {
-            markMessagesAsSeen();
-          }
-        });
+      
+      if (isCurrentChat && isAtBottom && !isFromMe) {
+        setTimeout(() => {
+          scrollToBottom();
+          markMessagesAsSeen(message.conversationId);
+        }, 50);
+      } else if (isCurrentChat && !isFromMe) {
+        setShowScrollButton(true);
       }
+    };
 
-      socket.emit("getContacts");
-    });
-
-    socket.on(
-      "messages",
-      ({
-        messages: newMessages,
-        hasMore,
-        initialLoad,
-      }: {
-        messages: Message[];
-        hasMore: boolean;
-        initialLoad?: boolean;
-      }) => {
+    const onMessages = (data: { messages: Message[]; hasMore: boolean }) => {
+      console.log('Received messages:', data); // Debug log
+      if (page === 0) {
+        // Initial load or new conversation
+        setMessages(data.messages);
+        setTimeout(() => {
+          scrollToBottom();
+        }, 50);
+      } else {
+        // Pagination load - keep scroll position
         const container = messageContainerRef.current;
-        if (!container) return;
-
-        if (initialLoad) {
-          setMessages(newMessages);
-          setIsInitialLoad(true);
+        if (container) {
+          scrollPositionRef.current = container.scrollHeight - container.scrollTop;
+        }
+        
+        setMessages((prev) => [...data.messages, ...prev]);
+        
+        if (container) {
           requestAnimationFrame(() => {
-            container.scrollTop = 0; // Bottom for flex-col-reverse
-          });
-        } else {
-          // Track the first visible message
-          const firstVisible = container.querySelector(
-            "div[data-id]"
-          ) as HTMLDivElement | null;
-          const firstVisibleId = firstVisible?.getAttribute("data-id");
-          const offsetFromTop = firstVisible?.getBoundingClientRect().top || 0;
-
-          setMessages((prev) => [...prev, ...newMessages]); // Append older messages
-
-          requestAnimationFrame(() => {
-            if (firstVisibleId) {
-              const target = messageRefs.current[+firstVisibleId];
-              if (target) {
-                const newOffset = target.getBoundingClientRect().top;
-                const scrollAdjust = newOffset - offsetFromTop;
-                container.scrollTop += scrollAdjust;
-              }
-            }
+            container.scrollTop = container.scrollHeight - scrollPositionRef.current;
           });
         }
-
-        setHasMoreMessages(hasMore);
-        setLoadingMore(false);
       }
-    );
+      setHasMoreMessages(data.hasMore);
+      setLoadingMore(false);
+    };
 
-    socket.on("messagesSeen", ({ by,conversationId }: { by: number,conversationId:number }) => {
+    const onMessagesSeen = ({ conversationId }: { conversationId: number }) => {
       setMessages((prev) =>
         prev.map((m) =>
-          m.conversationId=== conversationId && m.senderId !== by
-            ? { ...m, seen: true }
-            : m
+          m.conversationId === conversationId ? { ...m, read: true } : m
         )
       );
-    });
+    };
+
+    const onMessageSent = (message: Message) => {
+      setIsSending(false);
+      // Replace temporary message with server-confirmed one
+      setMessages(prev => prev.map(m => 
+        m.id === message.id || (m.content === message.content && m.senderId === message.senderId) 
+          ? message 
+          : m
+      ));
+    };
+
+    socket.on('contacts', onContacts);
+    socket.on('receiveMessage', onReceiveMessage);
+    socket.on('messages', onMessages);
+    socket.on('messagesSeen', onMessagesSeen);
+    socket.on('messageSent', onMessageSent);
+
+    // Initial load
+    socket.emit('getContacts');
 
     return () => {
-      socket.disconnect();
-      socketRef.current = null;
+      socket.off('contacts', onContacts);
+      socket.off('receiveMessage', onReceiveMessage);
+      socket.off('messages', onMessages);
+      socket.off('messagesSeen', onMessagesSeen);
+      socket.off('messageSent', onMessageSent);
     };
-  }, [session, session.data]);
+  }, [socket, session, selectedConversation, page, isAtBottom, messages.length]);
 
-  function isAtBottom(container: HTMLElement) {
-    return container.scrollTop >= 0; // bottom of flex-col-reverse
-  }
-
+  // Load messages when conversation changes
   useEffect(() => {
-    if (!session || !session.data) return;
+    if (selectedConversation && socket) {
+      console.log('Loading messages for conversation:', selectedConversation); // Debug log
+      setMessages([]);
+      setPage(0);
+      setHasMoreMessages(true);
+      socket.emit('getMessages', { 
+        conversationId: selectedConversation, 
+        limit: 20 
+      });
+      setUnread((prev) => ({ ...prev, [selectedConversation]: false }));
+    }
+  }, [selectedConversation, socket]);
+
+  // Set up scroll event listener
+  useEffect(() => {
     const container = messageContainerRef.current;
     if (!container) return;
 
-    const handleScroll = () => {
-      if (
-        selectedConversation &&
-        container.scrollTop >= 0 &&
-        messages.some((m) => m.senderId !== session.data.user.id && !m.read)
-      ) {
-        markMessagesAsSeen();
-      }
+    container.addEventListener('scroll', checkScrollPosition);
+    return () => {
+      container.removeEventListener('scroll', checkScrollPosition);
+    };
+  }, [checkScrollPosition]);
+
+  // Set up intersection observer for infinite scroll
+  useEffect(() => {
+    if (!messageContainerRef.current || !hasMoreMessages) return;
+
+    const options = {
+      root: messageContainerRef.current,
+      rootMargin: '100px',
+      threshold: 0.1,
     };
 
-    container.addEventListener("scroll", handleScroll);
-    return () => container.removeEventListener("scroll", handleScroll);
-  }, [messages, selectedConversation]);
-
-  useEffect(() => {
-    const container = userListRef.current;
-    if (!container) return;
-
-    const handleScroll = () => {
-      if (
-        container.scrollTop + container.clientHeight >=
-        container.scrollHeight - 50 &&
-        !loadingUsers &&
-        hasMoreUsers &&
-        !userLockRef.current
-      ) {
-        userLockRef.current = true;
-        setLoadingUsers(true);
-        const nextPage = userPage + 1;
-        setUserPage(nextPage);
-
-        socketRef.current?.emit("getContacts", {
-          skip: nextPage * 40,
-          limit: 40,
-        });
+    observerRef.current = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && !loadingMore && hasMoreMessages) {
+        loadMoreMessages();
       }
-    };
+    }, options);
 
-    container.addEventListener("scroll", handleScroll);
-    return () => container.removeEventListener("scroll", handleScroll);
-  }, [loadingUsers, hasMoreUsers, userPage]);
-
-  useEffect(() => {
-    if (!isInitialLoad) return;
-    const container = messageContainerRef.current;
-    if (!container) return;
-
-    requestAnimationFrame(() => {
-      container.scrollTop = 0;
-      setIsInitialLoad(false);
-    });
-  }, [conversationKey, isInitialLoad]);
-
-  const topSentinelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const sentinel = topSentinelRef.current;
-    if (!sentinel || !selectedConversation) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (
-          entries[0].isIntersecting &&
-          !loadingMore &&
-          hasMoreMessages &&
-          selectedConversation &&
-          !fetchLockRef.current
-        ) {
-          fetchLockRef.current = true;
-          setLoadingMore(true);
-          const nextPage = page + 1;
-          setPage(nextPage);
-
-          socketRef.current?.emit("getMessages", {
-            to: selectedConversation,
-            skip: nextPage * 10,
-            limit: 10,
-          });
-
-          setTimeout(() => {
-            fetchLockRef.current = false;
-          }, 400);
-        }
-      },
-      {
-        root: messageContainerRef.current,
-        threshold: 1.0,
-      }
-    );
-
-    observer.observe(sentinel);
+    if (sentinelRef.current) {
+      observerRef.current.observe(sentinelRef.current);
+    }
 
     return () => {
-      observer.disconnect();
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
     };
-  }, [loadingMore, hasMoreMessages, page, selectedConversation,socketRef]);
+  }, [hasMoreMessages, loadingMore]);
 
-  const moveUserToTop = (conversationToMove: number) => {
-    setConversation((prevConversation) => {
-      const existing = prevConversation.find((c) => c.id === conversationToMove);
-      if (!existing) return prevConversation;
-      const filtered = prevConversation.filter((c) => c.id !== conversationToMove);
-      return [existing, ...filtered];
+  const scrollToBottom = useCallback(() => {
+    if (messageContainerRef.current) {
+      messageContainerRef.current.scrollTop = 0; // Because of flex-col-reverse
+    }
+  }, []);
+
+  const markMessagesAsSeen = useCallback((conversationId: number) => {
+    if (!socket) return;
+    console.log('Marking messages as seen for conversation:', conversationId); // Debug log
+    socket.emit('markAsSeen', { conversationId });
+  }, [socket]);
+
+  const moveConversationToTop = useCallback((conversationId: number) => {
+    setConversations((prev) => {
+      const existing = prev.find((c) => c.id === conversationId);
+      if (!existing) return prev;
+      return [existing, ...prev.filter((c) => c.id !== conversationId)];
     });
-  };
+  }, []);
 
-  const getMessages = (conversationId: number) => {
-    if (conversationId === selectedConversation) return;
-
+  const loadMessages = useCallback((conversationId: number) => {
+    if (!socket || conversationId === selectedConversation) return;
+    
+    console.log('Loading messages for:', conversationId); // Debug log
     setSelectedConversation(conversationId);
-    selectedConversationIdRef.current = conversationId;
     setMessages([]);
     setPage(0);
     setHasMoreMessages(true);
-    setIsInitialLoad(true);
-    setConversationKey((prev) => prev + 1);
+    setUnread((prev) => ({ ...prev, [conversationId]: false }));
+    
+    socket.emit('getMessages', { 
+      conversationId, 
+      limit: 20 
+    });
+    markMessagesAsSeen(conversationId);
+  }, [socket, selectedConversation, markMessagesAsSeen]);
 
-    if (socketRef.current) {
-      socketRef.current.emit("getMessages", { conversationId: conversationId, limit: 20 });
-      socketRef.current.emit("markAsSeen", { conversationId: conversationId });
+  const loadMoreMessages = useCallback(() => {
+    if (!socket || !selectedConversation || loadingMore || !hasMoreMessages) return;
+    
+    console.log('Loading more messages, page:', page + 1); // Debug log
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    socket.emit('getMessages', {
+      conversationId: selectedConversation,
+      skip: nextPage * 20,
+      limit: 20,
+    });
+    setPage(nextPage);
+  }, [socket, selectedConversation, loadingMore, hasMoreMessages, page]);
 
-      setUnread((prev) => {
-        const newUnread = { ...prev };
-        delete newUnread[conversationId];
-        return newUnread;
-      });
-    }
-  };
+  const sendMessage = useCallback(() => {
+    if (!newMessage || !selectedConversation || !socket || isSending) return;
 
-  const sendMessage = () => {
-    if (newMessage && selectedConversation && socketRef.current) {
-      socketRef.current.emit("sendMessage", {
-        conversationId: selectedConversation,
-        content: newMessage,
-      });
+    console.log('Sending message:', newMessage); // Debug log
+    setIsSending(true);
+    
+    // Optimistically add the message
+    const tempMessage: Message = {
+      id: Date.now(), // Temporary ID
+      senderId: session?.user?.id || 0,
+      conversationId: selectedConversation,
+      content: newMessage,
+      read: false,
+      sentAt: new Date()
+    };
+    
+    setMessages(prev => [tempMessage, ...prev]);
+    setNewMessage("");
+    moveConversationToTop(selectedConversation);
+    setTimeout(scrollToBottom, 50);
 
-      requestAnimationFrame(() => {
-        const container = messageContainerRef.current;
-        if (container) {
-          container.scrollTop = 0; // ✅ Scroll to bottom for flex-col-reverse
-        }
-      });
+    socket.emit('sendMessage', {
+      conversationId: selectedConversation,
+      content: newMessage,
+    });
+  }, [newMessage, selectedConversation, socket, moveConversationToTop, isSending, session, scrollToBottom]);
 
-      setNewMessage("");
-      moveUserToTop(selectedConversation);
-      socketRef.current.emit("getContacts");
-    }
-  };
+  if (!session) return <div className="flex items-center justify-center h-screen">Loading...</div>;
 
-  if(!session)return(<div>loading</div>)
   return (
-  <div className="h-screen">
-    <Header session={session.data} />
-    <div className="flexh-[56%] bg-gray-100 text-gray-800 overflow-hidden relative">
-
-      {/* Mobile Sidebar Overlay */}
-      <div
-        className={`fixed  bg-opacity-30 z-10 transition-opacity md:hidden ${
-          mobileSidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        }`}
-        onClick={() => setMobileSidebarOpen(false)}
-      />
-
-      {/* Sidebar */}
-      <aside
-        ref={userListRef}
-        className={`fixed md:static top-0 left-0 h-full md:h-auto z-40 bg-white border-r border-gray-200 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 w-72 transform transition-transform duration-300 ${
-          mobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-        }`}
-      >
-        <div className="p-4 font-semibold text-xl border-b border-gray-200 flex justify-between items-center">
-          Conversations
-          <button
-            className="md:hidden text-sm text-gray-500"
-            onClick={() => setMobileSidebarOpen(false)}
-          >
-            ✕
-          </button>
-        </div>
-
-        {conversation?.map((c, idx) => {
-          const isSelected = selectedConversation === c.id;
-          const imageUrl = c.ad?.media?.[0]?.media?.url || c.user.image?.url || "/default-avatar.png";
-          const name = c.ad?.title || c.user.fullName;
-
-          return (
-            <div
-              key={idx}
-              onClick={() => {
-                setMobileSidebarOpen(false);
-                getMessages(c.id);
-              }}
-              className={`flex relative items-center gap-3 px-4 py-3 cursor-pointer hover:bg-blue-50 ${
-                isSelected ? "bg-blue-100 font-semibold" : ""
-              } border-b border-gray-100`}
-            >
-              <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 border">
-                {!c.ad?c.user?.image?.url?<Image
-                      src={c.user?.image?.url}
-                      alt={c.user.username}
-                      width={48}
-                      height={48}
-                      className="w-6 h-6 rounded-full object-cover"
-                    />:
-                    <UserAvatar height={48} userName={c.user?.username || 'A'} />
-                    :
-                    <Image src={imageUrl} alt="avatar" width={100} height={100} className="object-cover h-[48px] rounded-full" />}
-              </div>
-              <div className="flex-1 truncate">
-                <div className="font-medium truncate">{name}</div>
-                <div className="text-xs text-gray-400">
-                  {c.ad?.title ? "Annonce active" : "Profil utilisateur"}
-                </div>
-              </div>
-              {unread[c.id] && (
-                <span className="text-xs text-white bg-red-500 px-2 py-0.5 rounded-full">Nouveau</span>
-              )}
-                  {c.ad&&<div 
-                   className="absolute bottom-2 right-2 flex items-center gap-2 px-2 py-1 rounded-lg">
-                    {c.user?.image?.url?<Image
-                      src={c.user?.image?.url}
-                      alt={c.user.username}
-                      width={20}
-                      height={20}
-                      className="w-6 h-6 rounded-full object-cover"
-                    />:
-                    <UserAvatar height={20} userName={c.user?.username || 'A'} />
-                    }
-                    <div className="text-tiny text-gray-700">
-                      <p className="font-semibold">{c.user.fullName}</p>
-                    </div>
-                  </div> }            
-            </div>
-          );
-        })}
-      </aside>
-
-      {/* Chat View */}
-      <section className="flex max-h-full flex-col flex-1 border-r border-gray-200">
-        {/* Chat Header */}
-        <div className="px-6 py-4 border-b border-gray-200 font-semibold text-lg flex justify-between items-center">
-          {selectedConversation ? (
-            <a href={`/${(selectedConversationObj?.ad)?`ad/${selectedConversationObj.ad.id}`:`user/${selectedConversationObj?.user.id}`}`} className="hover:underline cursor-pointer">
-              {selectedConversationObj?.ad?.title || selectedConversationObj?.user?.username}
-            </a>
-          ) : (
-            "Sélectionner une conversation"
-          )}
-          <button
-            className="md:hidden text-sm text-blue-500"
-            onClick={() => setMobileSidebarOpen(true)}
-          >
-            ☰
-          </button>
-        </div>
-
-        {/* Messages */}
-        <div
-          ref={messageContainerRef}
-          className="flex-1 overflow-y-auto flex p-6 scrollbar-thin scrollbar-thumb-gray-300 flex-col-reverse"
+    <div className="flex flex-col h-screen">
+      <Header session={session} />
+      
+      <div className="flex flex-1 overflow-hidden bg-gray-50">
+        {/* Mobile sidebar toggle */}
+        <button
+          className="md:hidden fixed bottom-4 right-4 z-20 bg-blue-500 text-white p-3 rounded-full shadow-lg"
+          onClick={() => setMobileSidebarOpen(true)}
         >
-          {messages.map((msg, i) => {
-            const isMine = msg.senderId === session.data?.user.id;
-            const time = new Date(msg.sentAt).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            });
+          ☰
+        </button>
 
-            return (
-              <div
-                key={i}
-                data-id={msg.id}
-                ref={(el) => {
-                  messageRefs.current[msg.id] = el;
-                }}
-                className={`mb-4 flex ${isMine ? "justify-end" : "justify-start"}`}
-              >
+        {/* Conversations sidebar */}
+        <div
+          className={`fixed md:static inset-y-0 left-0 w-72 bg-white border-r z-10 transform ${
+            mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+          } transition-transform duration-300`}
+        >
+          <div className="p-4 border-b flex justify-between items-center bg-white">
+            <h2 className="text-xl font-semibold">Messages</h2>
+            <button
+              className="md:hidden text-gray-500"
+              onClick={() => setMobileSidebarOpen(false)}
+            >
+              ✕
+            </button>
+          </div>
+          
+          <div className="overflow-y-auto h-[calc(100%-60px)]">
+            {conversations.length > 0 ? (
+              conversations.map((conv) => (
                 <div
-                  className={`max-w-xs px-4 py-2 rounded-2xl shadow ${
-                    isMine ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-800"
+                  key={conv.id}
+                  onClick={() => {
+                    loadMessages(conv.id);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`flex items-center p-3 border-b cursor-pointer hover:bg-gray-50 ${
+                    conv.id === selectedConversation ? 'bg-blue-50' : ''
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                  <div className="text-[10px] mt-1 text-right opacity-70">
-                    {time} {isMine && (msg.read ? "✓✓ Vu" : "✓ Envoyé")}
+                  <div className="relative">
+                    <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200">
+                      {conv.user.image?.url ? (
+                        <Image 
+                          src={conv.user.image.url} 
+                          alt="" 
+                          width={48} 
+                          height={48} 
+                          className="object-cover"
+                        />
+                      ) : (
+                        <UserAvatar userName={conv.user.username} height={48} />
+                      )}
+                    </div>
+                    {conv.user.isOnline && (
+                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+                    )}
                   </div>
+                  
+                  <div className="ml-3 flex-1 min-w-0">
+                    <p className="font-medium truncate">
+                      {conv.ad?.title || conv.user.fullName}
+                    </p>
+                    <p className="text-sm text-gray-500 truncate">
+                      {conv.ad?.title ? 'Ad: ' + conv.ad.title : conv.user.username}
+                    </p>
+                  </div>
+                  
+                  {unread[conv.id] && (
+                    <div className="w-2 h-2 bg-red-500 rounded-full" />
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="p-4 text-center text-gray-500">
+                {initialLoadComplete ? 'No conversations found' : 'Loading conversations...'}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Main chat area */}
+        <div className="flex-1 flex flex-col bg-white relative">
+          {selectedConversation ? (
+            <>
+              <div className="p-4 border-b flex items-center">
+                <div className="w-10 h-10 rounded-full overflow-hidden mr-3">
+                  {selectedConversationObj?.user.image?.url ? (
+                    <Image 
+                      src={selectedConversationObj.user.image.url} 
+                      alt="" 
+                      width={40} 
+                      height={40} 
+                      className="object-cover"
+                    />
+                  ) : (
+                    <UserAvatar userName={selectedConversationObj?.user.username || ''} height={40} />
+                  )}
+                </div>
+                <div>
+                  <h3 className="font-medium">
+                    {selectedConversationObj?.user.fullName}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {selectedConversationObj?.user.isOnline ? 'Online' : 'Offline'}
+                  </p>
                 </div>
               </div>
-            );
-          })}
-
-          {/* Skeleton Loader */}
-          {loadingMore && (
-            <>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="mb-4 flex justify-start">
-                  <div className="w-40 h-4 rounded-lg bg-gray-200 animate-pulse" />
-                </div>
-              ))}
-            </>
-          )}
-
-          <div ref={topSentinelRef} className="h-1" />
-        </div>
-
-        {/* Input */}
-        <div className="px-6 py-4 border-t border-gray-200 flex items-center gap-2 bg-gray-50">
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            placeholder="Écrivez votre message"
-            className="flex-1 px-4 py-2 rounded-full border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none"
-          />
-          <button
-            onClick={sendMessage}
-            className="p-2 bg-orange-500 text-white rounded-full hover:bg-orange-600 transition"
-          >
-            ➤
-          </button>
-        </div>
-      </section>
-
-      {/* Right Panel */}
-      {selectedConversationObj?.user && (
-        <aside className="hidden lg:flex flex-col w-72 bg-white border-l border-gray-200 p-4">
-          <div className="flex flex-col items-center text-center">
-            <div className="w-24 h-24 rounded-full overflow-hidden border bg-gray-200 mb-3">
-              {selectedConversationObj.user.image?.url ? (
-                <Image
-                  src={selectedConversationObj.user.image.url}
-                  alt="User"
-                  width={96}
-                  height={96}
-                  className="object-cover"
-                />
-              ) : (
-                <UserAvatar height={96} userName={selectedConversationObj.user.username} />
+              
+              <div 
+                ref={messageContainerRef}
+                className="flex-1 overflow-y-auto flex flex-col-reverse p-4"
+              >
+                {messages.length > 0 ? (
+                  <>
+                    {messages.map((message) => (
+                      <div
+                        key={message.id}
+                        className={`flex mb-3 ${message.senderId === session.user.id ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div
+                          className={`max-w-xs px-4 py-2 rounded-lg ${
+                            message.senderId === session.user.id 
+                              ? 'bg-blue-500 text-white rounded-br-none' 
+                              : 'bg-gray-200 text-gray-800 rounded-bl-none'
+                          }`}
+                        >
+                          <p>{message.content}</p>
+                          <div className={`text-xs mt-1 flex items-center ${
+                            message.senderId === session.user.id 
+                              ? 'text-blue-100 justify-end' 
+                              : 'text-gray-500 justify-start'
+                          }`}>
+                            {new Date(message.sentAt).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                            {message.senderId === session.user.id && (
+                              <span className="ml-1">
+                                {message.read ? '✓✓' : '✓'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={sentinelRef} className="h-1" />
+                    {loadingMore && (
+                      <div className="flex justify-center p-2">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400" />
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-gray-500">
+                    {loadingMore ? 'Loading messages...' : 'No messages yet'}
+                  </div>
+                )}
+              </div>
+              
+              {/* Scroll to bottom button */}
+              {showScrollButton && (
+                <button
+                  onClick={() => {
+                    scrollToBottom();
+                    if (selectedConversation) {
+                      markMessagesAsSeen(selectedConversation);
+                    }
+                  }}
+                  className="fixed bottom-20 right-4 md:right-72 bg-blue-500 text-white p-2 rounded-full shadow-lg z-10"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 10.293a1 1 0 010 1.414l-6 6a1 1 0 01-1.414 0l-6-6a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l4.293-4.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
               )}
+              
+              <div className="p-4 border-t bg-white">
+                <div className="flex items-center">
+                  <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                      }
+                    }}
+                    placeholder="Type a message..."
+                    className="flex-1 px-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={!isConnected || isSending}
+                  />
+                  <button
+                    onClick={sendMessage}
+                    disabled={!isConnected || !newMessage || isSending}
+                    className="ml-2 p-2 bg-blue-500 text-white rounded-full disabled:bg-gray-300"
+                  >
+                    {isSending ? (
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+                    ) : (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-gray-500">Select a conversation to start chatting</p>
             </div>
+          )}
+        </div>
 
-            <a
-              href={`/user/${selectedConversationObj.user.id}`}
-              className="text-lg font-bold text-gray-800 cursor-pointer"
-            >
-              {selectedConversationObj.user.fullName}
-            </a>
-
-            <a
-              href={`/user/${selectedConversationObj.user.id}`}
-              className="text-sm text-gray-500 underline cursor-pointer"
-            >
-              @{selectedConversationObj.user.username}
-            </a>
-
-            <div className="text-xs text-gray-400 mt-1">
-              {selectedConversationObj.user.isOnline ? "En ligne" : "Actif il y a 6 min"}
+        {/* User info sidebar */}
+        {selectedConversationObj?.user && (
+          <div className="hidden lg:block w-72 border-l p-4 overflow-y-auto">
+            <div className="flex flex-col items-center">
+              <div className="w-24 h-24 rounded-full overflow-hidden mb-4">
+                {selectedConversationObj.user.image?.url ? (
+                  <Image 
+                    src={selectedConversationObj.user.image.url} 
+                    alt="" 
+                    width={96} 
+                    height={96} 
+                    className="object-cover"
+                  />
+                ) : (
+                  <UserAvatar userName={selectedConversationObj.user.username} height={96} />
+                )}
+              </div>
+              
+              <h3 className="text-xl font-semibold">
+                {selectedConversationObj.user.fullName}
+              </h3>
+              <p className="text-gray-500">
+                @{selectedConversationObj.user.username}
+              </p>
+              
+              <div className="mt-2 flex items-center">
+                <div className={`w-2 h-2 rounded-full mr-1 ${
+                  selectedConversationObj.user.isOnline ? 'bg-green-500' : 'bg-gray-400'
+                }`} />
+                <span className="text-sm text-gray-500">
+                  {selectedConversationObj.user.isOnline ? 'Online' : 'Offline'}
+                </span>
+              </div>
             </div>
-            <a
-              href={`mailto:${selectedConversationObj.user.email}`}
-              className="w-full block text-sm py-2 hover:underline"
-            >
-              {selectedConversationObj.user.email}
-            </a>
-          </div>
-
-          <div className="mt-6 space-y-3 w-full text-center">
-            <button className="w-full shadow-md font-semibold text-lg border rounded-xl py-2">
-              +33 {formatPhone(selectedConversationObj.user.phone)}
-            </button>
             
+            <div className="mt-6 space-y-4">
+              <div>
+                <h4 className="text-sm font-medium text-gray-500">Email</h4>
+                <a 
+                  href={`mailto:${selectedConversationObj.user.email}`} 
+                  className="text-blue-500 hover:underline"
+                >
+                  {selectedConversationObj.user.email}
+                </a>
+              </div>
+              
+              <div>
+                <h4 className="text-sm font-medium text-gray-500">Phone</h4>
+                <a 
+                  href={`tel:${selectedConversationObj.user.phone}`} 
+                  className="text-blue-500 hover:underline"
+                >
+                  {formatPhone(selectedConversationObj.user.phone)}
+                </a>
+              </div>
+            </div>
           </div>
-        </aside>
-      )}
-
+        )}
+      </div>
+      
+      <Footer />
     </div>
-    <Footer />
-  </div>
-);
-
+  );
 }
 function formatPhone(phone: string): string {
   return phone.replace(/(\d{2})(?=\d)/g, "$1 ").trim();

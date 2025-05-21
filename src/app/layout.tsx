@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Poppins } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/providers/Providers";
 import { cookies } from "next/headers";
+import { SocketProvider } from "./socket-provider";
 // export function getThemeClass() {
 //   const hour = new Date().getHours();
 
@@ -48,10 +49,11 @@ export default async function RootLayout({
       <body
         className={`${poppins.variable} flex items-center text-foreground w-full justify-center antialiased`}
       >
+        <SocketProvider>
         <main className="w-full px-2 lg:px-0 lg:w-[80%]">
         {children}
         </main>
-        
+        </SocketProvider>
       </body>
     </html>
     </Providers>

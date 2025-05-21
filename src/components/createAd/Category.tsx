@@ -110,7 +110,17 @@ export default function Category() {
                     id: categorieId,
                     name: categories.find((category) => category.id === categorieId)?.name || ""
                 }: null}
-                onChange={(selected) => {setValue('categoryId',selected?.id || 0);}}
+                onChange={(selected) => {
+                    if(selected)setValue('categoryId',selected?.id );
+                    else {
+                        setValue('categoryId',undefined );
+                        setValue('typeId',undefined );
+                        setValue('brandId',undefined );
+                        setValue('modelId',undefined );
+                        setBrands([])
+                        setModele([])
+                    }
+                }}
                 placeholder={"Categories"}
             />
             {!!categorieId&&(<><label className="block text-sm font-medium text-gray-700 mb-1">Types</label>
@@ -126,7 +136,16 @@ export default function Category() {
                         id: typeId,
                         name: types.find((type) => type.id === typeId)?.name || ""
                     }:null}
-                    onChange={(selected) => {setValue('typeId',selected?.id || 0)}}
+                    onChange={(selected) => {
+                        if(selected)setValue('typeId',selected?.id );
+                    else {
+                        setValue('typeId',undefined );
+                        setValue('brandId',undefined );
+                        setValue('modelId',undefined );
+                        setBrands([])
+                        setModele([])
+                    }
+                    }}
                     placeholder={"Types"}
                 />}</>)}
             {typeId&&displayBrands&&<><label className="block text-sm font-medium text-gray-700 mb-1">Marques</label>
@@ -142,7 +161,15 @@ export default function Category() {
                     id: brandId,
                     name: brands.find((brand) => brand.id === brandId)?.name || ""
                 }:null}
-                onChange={(selected) => setValue('brandId',selected?.id || 0)}
+                onChange={(selected) => {
+                    if(selected)setValue('brandId',selected.id );
+                    else {
+                        setValue('brandId',undefined );
+                        setValue('modelId',undefined );
+                        setBrands([])
+                        setModele([])
+                    }
+                }}
                 placeholder={"Marques"}
             />}</>}
             {brandId&&displayBrands&&typeId&&categorieId&&<><label className="block text-sm font-medium text-gray-700 mb-1">Modeles</label>
@@ -156,11 +183,17 @@ export default function Category() {
                 }))}
                 selected={modeleId?{id:modeleId,name:modele.find((model) => model.id === modeleId)?.name || ""}:null}
                 onChange={(selected) => {
-                    setValue('modelId', selected?.id || 0);
-                    clearErrors('modelId');
-                    clearErrors('brandId');
-                    clearErrors('typeId');
-                    clearErrors('categoryId');
+                    
+                    if(selected){
+                        setValue('modelId', selected?.id);
+                        clearErrors('modelId');
+                        clearErrors('brandId');
+                        clearErrors('typeId');
+                        clearErrors('categoryId');
+                    }
+                    else {
+                        setValue('modelId',undefined );
+                    }
                 }}
                 placeholder={"Modeles"}
             />}</>}

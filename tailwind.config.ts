@@ -12,7 +12,7 @@ export default {
   		colors: {
   			background: 'var(--background)',
   			foreground: 'var(--foreground)',
-  			colorOne: 'var(--colorOne)',//'#fb923c'
+  			colorOne: '#fb923c',//'#fb923c'
   			fontgray: '#6b7280 ',
   			card: {
   				DEFAULT: 'hsl(var(--card))',

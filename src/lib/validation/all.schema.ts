@@ -52,12 +52,45 @@ export const filterEtape2Schema = z.object({
 export type filterEtape2Dto = z.infer<typeof filterEtape2Schema>;
 export type FilterDto = z.infer<typeof filterDtoSchema>;
 //?----------------------------------------------------
+export const siretSchema = z.object({
+  siret: z
+    .string()
+    .min(14, "Le numéro SIRET doit contenir 14 chiffres")
+    .max(14)
+    .regex(/^\d+$/, "Le numéro SIRET doit contenir uniquement des chiffres"),
+});
 
+export type SiretFormData = z.infer<typeof siretSchema>;
 // Company DTO
 export const companyDtoSchema = z.object({
-  name: z.string().min(4).max(30),
-  siret: z.string().length(14).regex(/^\d+$/),
-  address: z.string().max(100).optional(),
+  siret: z
+    .string()
+    .min(14, "Le numéro SIRET doit contenir 14 chiffres")
+    .max(14)
+    .regex(/^\d+$/, "Le numéro SIRET doit contenir uniquement des chiffres"),
+  kbis: z.any()
+    .refine((files) => files?.length > 0, "KBIS file is required")
+    .refine((files) => files?.[0]?.size <= 10 * 1024 * 1024, "Max file size is 10MB")
+    .refine(
+      (files) => ['application/pdf', 'image/jpeg', 'image/png'].includes(files?.[0]?.type),
+      "Only PDF, JPEG, or PNG files are allowed"
+    ),
+  
+  id: z.any()
+    .refine((files) => files?.length > 0, "ID file is required")
+    .refine((files) => files?.[0]?.size <= 10 * 1024 * 1024, "Max file size is 10MB")
+    .refine(
+      (files) => ['application/pdf', 'image/jpeg', 'image/png'].includes(files?.[0]?.type),
+      "Only PDF, JPEG, or PNG files are allowed"
+    ),
+  
+  address: z.any()
+    .refine((files) => files?.length > 0, "Address proof is required")
+    .refine((files) => files?.[0]?.size <= 10 * 1024 * 1024, "Max file size is 10MB")
+    .refine(
+      (files) => ['application/pdf', 'image/jpeg', 'image/png'].includes(files?.[0]?.type),
+      "Only PDF, JPEG, or PNG files are allowed"
+    )
 });
 
 // User DTO
@@ -75,10 +108,9 @@ export const userDtoSchema = z.object({
   company: companyDtoSchema.optional(),
   firstName: nameSchema,
   lastName: nameSchema,
-  username: nameSchema,
   userType: z.enum(["INDIVIDUAL", "PROFESSIONAL"]),
-  phone: z.string().min(10).max(15).regex(/^\d+$/),
-  token: z.string().jwt(),
+  emailtoken: z.string().jwt(),
+  phonetoken: z.string().jwt(),
   password: z.string().min(8).max(30).refine(
     (val) =>
       /[A-Z]/.test(val) && // At least one uppercase letter
@@ -100,6 +132,27 @@ export const userDtoSchema = z.object({
 export const sendCodeDtoSchema = z.object({
   email: z.string().email('Vérifiez l’adresse email, son format n’est pas valide.').min(5,'Vérifiez l’adresse email, son format n’est pas valide.').max(100,'Vérifiez l’adresse email, son format n’est pas valide.'),
 });
+export const sendCodeDtoPhoneSchema = z.object({
+  phone: z
+    .string()
+    .length(12, { message: 'Le numéro doit comporter 12 caractères (ex: +33612345678)' })
+    .regex(/^\+33[67]\d{8}$/, { message: 'Le numéro doit commencer par +33 suivi de 9 chiffres valides pour la France (mobile)' }),
+});
+
+export type SendCodeDtoPhone = z.infer<typeof sendCodeDtoPhoneSchema>;
+
+export const otpSchemaPhone = z.object({
+  otp: z
+    .array(z.string().regex(/^\d$/, 'Doit être un chiffre'))
+    .length(6, 'Le code doit comporter 6 chiffres'),
+  phone: z
+    .string()
+    .length(12, { message: 'Le numéro doit comporter 12 caractères (ex: +33612345678)' })
+    .regex(/^\+33[67]\d{8}$/, { message: 'Le numéro doit commencer par +33 suivi de 9 chiffres valides pour la France (mobile)' }),
+});
+
+export type OtpSchemaPhone = z.infer<typeof otpSchemaPhone>
+
 export const otpSchema = z.object({
     otp: z
     .array(z.string().regex(/^\d$/, 'Must be a digit'))
@@ -108,6 +161,34 @@ export const otpSchema = z.object({
 })
 
 export type OtpSchema = z.infer<typeof otpSchema>
+
+export const uploadSchema = z.object({
+  kbis: z.any()
+    .refine((files) => files?.length > 0, "KBIS file is required")
+    .refine((files) => files?.[0]?.size <= 10 * 1024 * 1024, "Max file size is 10MB")
+    .refine(
+      (files) => ['application/pdf', 'image/jpeg', 'image/png'].includes(files?.[0]?.type),
+      "Only PDF, JPEG, or PNG files are allowed"
+    ),
+  
+  id: z.any()
+    .refine((files) => files?.length > 0, "ID file is required")
+    .refine((files) => files?.[0]?.size <= 10 * 1024 * 1024, "Max file size is 10MB")
+    .refine(
+      (files) => ['application/pdf', 'image/jpeg', 'image/png'].includes(files?.[0]?.type),
+      "Only PDF, JPEG, or PNG files are allowed"
+    ),
+  
+  address: z.any()
+    .refine((files) => files?.length > 0, "Address proof is required")
+    .refine((files) => files?.[0]?.size <= 10 * 1024 * 1024, "Max file size is 10MB")
+    .refine(
+      (files) => ['application/pdf', 'image/jpeg', 'image/png'].includes(files?.[0]?.type),
+      "Only PDF, JPEG, or PNG files are allowed"
+    )
+});
+
+export type UploadData = z.infer<typeof uploadSchema>;
 
 // Patterns
 export const emailSchema = z.string().email()
@@ -144,34 +225,56 @@ export type SendCodeDto = z.infer<typeof sendCodeDtoSchema>;
 //!--------------------------------------------------------------------------------------
 
 
-export const createAdsSchema = z
-  .object({
-    title: z
-      .string()
-      .min(6, { message: 'Le titre doit contenir au moins 6 caractères.' }),
-      
-    description: z
-      .string()
-      .min(20, { message: 'La description doit contenir au moins 20 caractères.' }),
+export const createAdsSchema = z.object({
+  title: z
+    .string()
+    .min(6, { message: 'Le titre doit contenir au moins 6 caractères.' }),
+    
+  description: z
+    .string()
+    .min(20, { message: 'La description doit contenir au moins 20 caractères.' }),
 
-    price: z
-      .number({ invalid_type_error: 'Le prix doit être un nombre.' })
-      .int({ message: 'Le prix doit être un entier.' })
-      .min(100, { message: 'Le prix doit être au moins de 100 Euro.' })
-      .max(10000000000, { message: 'Le prix ne doit pas dépasser 1 000 000 000 Euro.' }),
+  price: z
+    .number({ invalid_type_error: 'Le prix doit être un nombre.' })
+    .int({ message: 'Le prix doit être un entier.' })
+    .min(100, { message: 'Le prix doit être au moins de 100 Euro.' })
+    .max(10000000000, { message: 'Le prix ne doit pas dépasser 1 000 000 000 Euro.' }),
 
-    status: z.enum(['Active', 'Brouillon'], {
-      errorMap: () => ({ message: 'Le statut sélectionné est invalide.' }),
+  status: z.enum(['Active', 'Brouillon'], {
+    errorMap: () => ({ message: 'Le statut sélectionné est invalide.' }),
+  }),
+
+  // Updated images validation (now accepts FileList)
+  images: z.any()
+    .refine((files) => files?.length >= 3, {
+      message: 'Vous devez ajouter au moins 3 images.'
+    })
+    .refine((files) => files?.length <= 10, {
+      message: 'Vous ne pouvez pas ajouter plus de 10 images.'
+    })
+    .refine((files) => {
+      return Array.from(files as FileList).every(file => 
+        file.type.startsWith('image/')
+      );
+    }, {
+      message: 'Seules les images sont acceptées (JPEG, PNG, etc.)'
     }),
 
-    images: z
-      .array(
-        z.string()
-      )
-      .min(3, { message: 'Vous devez ajouter au moins 3 images.' })
-      .max(10, { message: 'Vous ne pouvez pas ajouter plus de 10 images.' }),
-
-    videoid: z.number().optional(),
+  // New optional video field
+  video:  z.instanceof(File)
+  .optional()
+  .refine((file) => {
+    if (!file) return true; // Optional
+    return file.type.startsWith('video/');
+  }, {
+    message: 'Seules les vidéos sont acceptées (MP4, MOV, etc.)'
+  })
+  .refine((file) => {
+    if (!file) return true;
+    return file.size <= 100 * 1024 * 1024; // 100MB max
+  }, {
+    message: 'La vidéo ne doit pas dépasser 100MB'
+  }),
 
     categoryId: z
       .number({ invalid_type_error: 'La catégorie est requise.' })
@@ -199,7 +302,7 @@ export const createAdsSchema = z
           attributeId: z.number(),
           name: z.string(),
           attributeCollectionId: z.number(),
-          value:  z.number().optional(),
+          value: z.number().optional(),
           required: z.boolean().optional(),
         })
       )
@@ -212,11 +315,11 @@ export const createAdsSchema = z
       if (attr.required) {
         const isEmpty =
           attr.value === undefined ||
-          attr.value === null 
+          attr.value === null;
         if (isEmpty) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: `« ${attr.name} »`,
+            message: `« ${attr.name} » est requis`,
             path: ['attributes', index, 'value'],
           });
         }

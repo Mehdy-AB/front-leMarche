@@ -72,7 +72,16 @@ export default function Location() {
                     id: region.id,name: region.name
                 }))}
                 selected={region.find((region) => region.id === regionId)||null}
-                onChange={(selected) => setRegionId(selected?.id || 0)}
+                onChange={(selected) => {
+                    if(selected)setRegionId(selected?.id);
+                    else{
+                        setRegionId(null);
+                        setDepartmentId(null);
+                        setValue('locationId', -1)
+                        setDepartments([])
+                        setCities([])
+                    }
+                }}
                 placeholder={"region"}
             />
             {(regionId)&&<><label className="block text-sm font-medium text-gray-700 mb-1">Département</label>
@@ -85,7 +94,14 @@ export default function Location() {
                     id: department.id,name: department.name
                 }))}
                 selected={departments.find((department) => department.id === departmentId)||null}
-                onChange={(selected) => setDepartmentId(selected?.id || 0)}
+                onChange={(selected) => {
+                    if(selected)setDepartmentId(selected?.id)
+                    else{
+                        setDepartmentId(null);
+                        setValue('locationId', -1)
+                        setCities([])
+                    }}
+                }
                 placeholder={"departement"}
             />}</>}
             {departmentId&&<><label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
@@ -98,7 +114,7 @@ export default function Location() {
                     id: city.id,name: city.name
                 }))}
                 selected={cities.find((city) => city.id === locationId)||null}
-                onChange={(selected) => {setValue('locationId',selected?.id || 0);clearErrors('locationId')}}
+                onChange={(selected) => {setValue('locationId',selected?.id as number );clearErrors('locationId')}}
                 placeholder={"ville"}
             />}</>}
         </>);

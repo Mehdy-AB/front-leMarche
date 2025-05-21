@@ -12,9 +12,16 @@ import DropDown from "../outher/DropDown";
 export default function Header({ session }: { session: Session | null }) {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
-
+  const [showMessages, setMessages] = useState(true);
   return (
     <header className="border-b border-gray-200 z-20 relative">
+      <div className="fixed bottom-[5%] right-[2%]">
+        <button className="bg-white rounded-full border-2 group border-gray-300 hover:bg-gray-200 shadow-lg p-2">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-12">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+        </svg>
+        </button>
+      </div>
       <div className="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between">
         {/* Left - Logo + Search */}
         <div className="flex items-center space-x-4">
@@ -22,16 +29,12 @@ export default function Header({ session }: { session: Session | null }) {
           <div className="relative hidden md:block w-96">
             <input
               type="text"
-              placeholder="Rechercher sur leboncoin"
+              placeholder="Rechercher sur leMarché"
               className="pl-4 pr-10 py-2 rounded-full bg-gray-100 focus:outline-none w-full"
             />
-            <svg xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-              className="absolute size-8 right-2 top-1/2 -translate-y-1/2 text-white bg-colorOne p-1.5 rounded-full">
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="m21 21-5.197-5.197..." />
+
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="absolute size-7 cursor-pointer right-2 top-1/2 -translate-y-1/2 text-white bg-colorOne p-1.5 rounded-full">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
             </svg>
           </div>
         </div>
@@ -41,13 +44,19 @@ export default function Header({ session }: { session: Session | null }) {
           <a href="/compte/new" className="bg-colorOne text-white px-4 py-2 rounded-full font-medium hover:bg-[#e64a19] transition-all duration-300">
             + Déposer une annonce
           </a>
-
+          <div className="flex items-end space-x-6">
           {session ? (
             <>
-              <Link href="/favoris" className="text-center hover:text-colorOne transition-all">
+              <Link href="/favoris" className="text-center justify-center flex flex-col hover:text-colorOne transition-all">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6 w-full">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+              </svg>
                 <p>Favoris</p>
               </Link>
-              <Link href="/compte/messages" className="text-center hover:text-colorOne transition-all">
+              <Link href="/compte/messages" className="text-center justify-center flex flex-col hover:text-colorOne transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6 w-full">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+                </svg>
                 <p>Messages</p>
               </Link>
               <div className="relative" id="user-avatar" onClick={() => setShowUserDropdown((prev) => !prev)}>
@@ -93,6 +102,7 @@ export default function Header({ session }: { session: Session | null }) {
               <p>Se connecter</p>
             </a>
           )}
+        </div>
         </div>
 
         {/* Mobile Menu Button */}
