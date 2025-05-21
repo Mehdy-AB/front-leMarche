@@ -4,7 +4,7 @@ import Header from "@/components/home/Header";
 import { useSession } from "next-auth/react";
 import Image from 'next/image'
 import { useRouter } from "next/navigation";
-import { useEffect, useRef } from "react";
+import {  useRef } from "react";
 import LineLoader from "../lib/loaders/LineLoader";
 
 
@@ -43,7 +43,7 @@ export default function Home() {
   if (isloading) return(<LineLoader/>); 
   return (
     <main className="font-poppins bg-white ">
-    <Header session={session?.data} router={router}/>
+    <Header session={session?.data}/>
     {/* Hero Section */}
     <section className="bg-colorOne/10 rounded-xl mt-4 py-16 text-center relative">
         <h1 className="text-3xl md:text-4xl font-bold mb-4 text-colorOne">
