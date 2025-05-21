@@ -16,7 +16,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-export const Skeleton = ({ className }: { className?: string }) => (
+const Skeleton = ({ className }: { className?: string }) => (
   <div className={`bg-gray-200 rounded animate-pulse ${className}`} />
 );
 

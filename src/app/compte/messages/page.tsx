@@ -66,7 +66,7 @@ export default function ChatPage() {
   const { ref: sentinelRef, inView } = useInView();
 
   // Fetch conversations
-  const { data: conversations = [] } = useQuery({
+  const { data: conversations = [] } = useQuery<ConversationItem[]>({
     queryKey: ["conversations"],
     queryFn: () =>
       new Promise((resolve) => {
@@ -194,7 +194,7 @@ export default function ChatPage() {
         }
       );
     },
-    onError: () => {
+    onError: (e, _, context) => {
       // Rollback optimistic update
       queryClient.setQueryData(
         ["messages", selectedConversation],
