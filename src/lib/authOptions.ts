@@ -24,7 +24,7 @@ export const authOptions = {
                 if (emailSchema.safeParse(isValidBody.data.identifier).success){ type = 'loginWithEmail'}
                 else if (phoneSchema.safeParse(isValidBody.data.identifier).success) type = 'loginWithPhone'
                 else if (nameSchema.safeParse(isValidBody.data.identifier).success) type = 'loginWithUserName'
-                const res = await fetch(`${process.env.Backend_URL}/user/auth/${type}`,
+                const res = await fetch(`https://back-le-marche.vercel.app/user/auth/${type}`,
                   {   
                       method: 'POST',
                       headers: {

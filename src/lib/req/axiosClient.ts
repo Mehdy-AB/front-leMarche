@@ -3,7 +3,7 @@ import { jwtDecode } from "jwt-decode";
 import { getSession, signOut } from "next-auth/react";
 
 const axiosClient = axios.create({
-  baseURL: process.env.Backend_URL,
+  baseURL: 'https://back-le-marche.vercel.app',
 });
 
 let isRefreshing = false;

@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const axiosGhost = axios.create({
-  baseURL: process.env.Backend_URL,
+  baseURL:'https://back-le-marche.vercel.app',
 });
 
 export default axiosGhost;
