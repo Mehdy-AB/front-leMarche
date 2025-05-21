@@ -3,11 +3,14 @@
 
 import { useSession } from 'next-auth/react';
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
+import { useInView } from 'react-intersection-observer';
 import Header from '@/components/home/Header';
 import Footer from '@/components/home/Footer';
 import { UserAvatar } from '@/components/all/UserAvatar';
 import Image from 'next/image';
 import { useSocket } from '@/app/socket-provider';
+import Loader from '@/lib/loaders/LineLoader';
 
 type ConversationItem = {
   id: number;
@@ -46,55 +49,136 @@ type Message = {
 export default function ChatPage() {
   const { socket, isConnected } = useSocket();
   const { data: session } = useSession();
+  const queryClient = useQueryClient();
   const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
-  const [conversations, setConversations] = useState<ConversationItem[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [unread, setUnread] = useState<Record<number, boolean>>({});
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMoreMessages, setHasMoreMessages] = useState(true);
-  const [page, setPage] = useState(0);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-  const [showScrollButton, setShowScrollButton] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
-  const [isSending, setIsSending] = useState(false);
-
   const messageContainerRef = useRef<HTMLDivElement>(null);
-  const selectedConversationObj = conversations.find((c) => c.id === selectedConversation);
-  const observerRef = useRef<IntersectionObserver>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  const scrollPositionRef = useRef<number>(0);
+  const { ref: sentinelRef, inView } = useInView();
 
-  // Check scroll position
-  const checkScrollPosition = useCallback(() => {
-    if (!messageContainerRef.current) return;
-    
-    const { scrollTop } = messageContainerRef.current;
-    const atBottom = scrollTop === 0; // Because we're using flex-col-reverse
-    
-    setIsAtBottom(atBottom);
-    setShowScrollButton(!atBottom);
-    
-    // Mark messages as seen if at bottom
-    if (atBottom && selectedConversation) {
-      markMessagesAsSeen(selectedConversation);
+  // Fetch conversations
+  const { data: conversations = [] } = useQuery<ConversationItem[]>({
+    queryKey: ['conversations'],
+    queryFn: () => new Promise((resolve) => {
+      if (!socket) return resolve([]);
+      socket.emit('getContacts', {}, (response: { conversation: ConversationItem[] }) => {
+        resolve(response.conversation);
+      });
+    }),
+    enabled: !!socket,
+    initialData: [],
+  });
+
+  // Fetch messages with pagination
+  const {
+    data: messagesData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['messages', selectedConversation],
+    queryFn: async ({ pageParam = 0 }) => {
+      if (!socket || !selectedConversation) return { messages: [], hasMore: false };
+      
+      return new Promise<{ messages: Message[]; hasMore: boolean }>((resolve) => {
+        socket.emit('getMessages', { 
+          conversationId: selectedConversation,
+          skip: pageParam * 20,
+          limit: 20,
+        }, (data: { messages: Message[]; hasMore: boolean }) => {
+          resolve(data);
+        });
+      });
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.hasMore ? allPages.length : undefined;
+    },
+    enabled: !!selectedConversation && !!socket,
+    initialPageParam: 0,
+  });
+
+  const messages = messagesData?.pages.flatMap(page => page.messages) || [];
+
+  // Mutation for sending messages
+  const sendMessageMutation = useMutation({
+    mutationFn: async (content: string) => {
+      if (!socket || !selectedConversation) return;
+      
+      return new Promise<Message>((resolve) => {
+        socket.emit('sendMessage', {
+          conversationId: selectedConversation,
+          content,
+        }, (message: Message) => {
+          resolve(message);
+        });
+      });
+    },
+    onMutate: async (content) => {
+      // Optimistic update
+      const tempMessage: Message = {
+        id: Date.now(),
+        senderId: session?.user.id || 0,
+        conversationId: selectedConversation || 0,
+        content,
+        read: false,
+        sentAt: new Date()
+      };
+      
+      queryClient.setQueryData(['messages', selectedConversation], (old: any) => {
+        return {
+          pages: [
+            { messages: [tempMessage, ...(old?.pages?.[0]?.messages || [])], 
+            hasMore: old?.pages?.[0]?.hasMore || false
+          },
+            ...old?.pages?.slice(1) || []
+          ]
+        };
+      });
+      
+      return { tempMessage };
+    },
+    onSuccess: (message, _, context) => {
+      // Replace optimistic update with real message
+      queryClient.setQueryData(['messages', selectedConversation], (old: any) => {
+        return {
+          pages: old.pages.map((page: any, i: number) => ({
+            ...page,
+            messages: i === 0 
+              ? page.messages.map((m: Message) => 
+                  m.id === context?.tempMessage.id ? message : m
+                )
+              : page.messages
+          }))
+        };
+      });
+    },
+    onError: () => {
+      // Rollback optimistic update
+      queryClient.setQueryData(['messages', selectedConversation], (old: any) => {
+        return {
+          pages: old.pages.map((page: any, i: number) => ({
+            ...page,
+            messages: i === 0 
+              ? page.messages.filter((m: Message) => m.id !== context?.tempMessage.id)
+              : page.messages
+          }))
+        };
+      });
     }
-  }, [selectedConversation]);
+  });
 
-  // Initialize socket listeners
+  // Load more messages when sentinel is in view
+  useEffect(() => {
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // Socket event listeners
   useEffect(() => {
     if (!socket || !session) return;
-
-    const onContacts = (data: { conversation: ConversationItem[]; hasMore: boolean }) => {
-      setConversations(data.conversation);
-      setInitialLoadComplete(true);
-      
-      // If we have a selected conversation but no messages, load them
-      if (selectedConversation && messages.length === 0) {
-        loadMessages(selectedConversation);
-      }
-    };
 
     const onReceiveMessage = (message: Message) => {
       const isCurrentChat = message.conversationId === selectedConversation;
@@ -106,97 +190,98 @@ export default function ChatPage() {
         moveConversationToTop(message.conversationId);
       }
 
-      setMessages((prev) => [message, ...prev]);
-      
+      // Update messages cache
+      queryClient.setQueryData(['messages', message.conversationId], (old: any) => {
+        if (!old) return { pages: [{ messages: [message], hasMore: false }] };
+        
+        return {
+          pages: old.pages.map((page: any, i: number) => ({
+            ...page,
+            messages: i === 0 ? [message, ...page.messages] : page.messages
+          }))
+        };
+      });
+
       if (isCurrentChat && isAtBottom && !isFromMe) {
         setTimeout(() => {
           scrollToBottom();
           markMessagesAsSeen(message.conversationId);
         }, 50);
-      } else if (isCurrentChat && !isFromMe) {
-        setShowScrollButton(true);
       }
-    };
-
-    const onMessages = (data: { messages: Message[]; hasMore: boolean }) => {
-      console.log('Received messages:', data); // Debug log
-      if (page === 0) {
-        // Initial load or new conversation
-        setMessages(data.messages);
-        setTimeout(() => {
-          scrollToBottom();
-        }, 50);
-      } else {
-        // Pagination load - keep scroll position
-        const container = messageContainerRef.current;
-        if (container) {
-          scrollPositionRef.current = container.scrollHeight - container.scrollTop;
-        }
-        
-        setMessages((prev) => [...data.messages, ...prev]);
-        
-        if (container) {
-          requestAnimationFrame(() => {
-            container.scrollTop = container.scrollHeight - scrollPositionRef.current;
-          });
-        }
-      }
-      setHasMoreMessages(data.hasMore);
-      setLoadingMore(false);
     };
 
     const onMessagesSeen = ({ conversationId }: { conversationId: number }) => {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.conversationId === conversationId ? { ...m, read: true } : m
-        )
-      );
+      queryClient.setQueryData(['messages', conversationId], (old: any) => {
+        if (!old) return old;
+        
+        return {
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            messages: page.messages.map((m: Message) =>
+              m.conversationId === conversationId ? { ...m, read: true } : m
+            )
+          }))
+        };
+      });
     };
 
-    const onMessageSent = (message: Message) => {
-      setIsSending(false);
-      // Replace temporary message with server-confirmed one
-      setMessages(prev => prev.map(m => 
-        m.id === message.id || (m.content === message.content && m.senderId === message.senderId) 
-          ? message 
-          : m
-      ));
-    };
-
-    socket.on('contacts', onContacts);
     socket.on('receiveMessage', onReceiveMessage);
-    socket.on('messages', onMessages);
     socket.on('messagesSeen', onMessagesSeen);
-    socket.on('messageSent', onMessageSent);
-
-    // Initial load
-    socket.emit('getContacts');
 
     return () => {
-      socket.off('contacts', onContacts);
       socket.off('receiveMessage', onReceiveMessage);
-      socket.off('messages', onMessages);
       socket.off('messagesSeen', onMessagesSeen);
-      socket.off('messageSent', onMessageSent);
     };
-  }, [socket, session, selectedConversation, page, isAtBottom, messages.length]);
+  }, [socket, session, selectedConversation, isAtBottom, queryClient]);
 
-  // Load messages when conversation changes
-  useEffect(() => {
-    if (selectedConversation && socket) {
-      console.log('Loading messages for conversation:', selectedConversation); // Debug log
-      setMessages([]);
-      setPage(0);
-      setHasMoreMessages(true);
-      socket.emit('getMessages', { 
-        conversationId: selectedConversation, 
-        limit: 20 
-      });
-      setUnread((prev) => ({ ...prev, [selectedConversation]: false }));
+  const scrollToBottom = useCallback(() => {
+    if (messageContainerRef.current) {
+      messageContainerRef.current.scrollTop = 0;
     }
-  }, [selectedConversation, socket]);
+  }, []);
 
-  // Set up scroll event listener
+  const markMessagesAsSeen = useCallback((conversationId: number) => {
+    if (!socket) return;
+    socket.emit('markAsSeen', { conversationId });
+  }, [socket]);
+
+  const moveConversationToTop = useCallback((conversationId: number) => {
+    queryClient.setQueryData(['conversations'], (old: ConversationItem[] = []) => {
+      const existing = old.find((c) => c.id === conversationId);
+      if (!existing) return old;
+      return [existing, ...old.filter((c) => c.id !== conversationId)];
+    });
+  }, [queryClient]);
+
+  const loadMessages = useCallback((conversationId: number) => {
+    if (!socket || conversationId === selectedConversation) return;
+    
+    setSelectedConversation(conversationId);
+    setUnread((prev) => ({ ...prev, [conversationId]: false }));
+    markMessagesAsSeen(conversationId);
+  }, [socket, selectedConversation, markMessagesAsSeen]);
+
+  const sendMessage = useCallback(() => {
+    if (!newMessage || !selectedConversation) return;
+    sendMessageMutation.mutate(newMessage);
+    setNewMessage("");
+    moveConversationToTop(selectedConversation);
+    setTimeout(scrollToBottom, 50);
+  }, [newMessage, selectedConversation, sendMessageMutation, moveConversationToTop, scrollToBottom]);
+
+  const checkScrollPosition = useCallback(() => {
+    if (!messageContainerRef.current) return;
+    
+    const { scrollTop } = messageContainerRef.current;
+    const atBottom = scrollTop === 0;
+    
+    setIsAtBottom(atBottom);
+    
+    if (atBottom && selectedConversation) {
+      markMessagesAsSeen(selectedConversation);
+    }
+  }, [selectedConversation, markMessagesAsSeen]);
+
   useEffect(() => {
     const container = messageContainerRef.current;
     if (!container) return;
@@ -207,112 +292,9 @@ export default function ChatPage() {
     };
   }, [checkScrollPosition]);
 
-  // Set up intersection observer for infinite scroll
-  useEffect(() => {
-    if (!messageContainerRef.current || !hasMoreMessages) return;
+  if (!session) return <Loader/>
 
-    const options = {
-      root: messageContainerRef.current,
-      rootMargin: '100px',
-      threshold: 0.1,
-    };
-
-    observerRef.current = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && !loadingMore && hasMoreMessages) {
-        loadMoreMessages();
-      }
-    }, options);
-
-    if (sentinelRef.current) {
-      observerRef.current.observe(sentinelRef.current);
-    }
-
-    return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-      }
-    };
-  }, [hasMoreMessages, loadingMore]);
-
-  const scrollToBottom = useCallback(() => {
-    if (messageContainerRef.current) {
-      messageContainerRef.current.scrollTop = 0; // Because of flex-col-reverse
-    }
-  }, []);
-
-  const markMessagesAsSeen = useCallback((conversationId: number) => {
-    if (!socket) return;
-    console.log('Marking messages as seen for conversation:', conversationId); // Debug log
-    socket.emit('markAsSeen', { conversationId });
-  }, [socket]);
-
-  const moveConversationToTop = useCallback((conversationId: number) => {
-    setConversations((prev) => {
-      const existing = prev.find((c) => c.id === conversationId);
-      if (!existing) return prev;
-      return [existing, ...prev.filter((c) => c.id !== conversationId)];
-    });
-  }, []);
-
-  const loadMessages = useCallback((conversationId: number) => {
-    if (!socket || conversationId === selectedConversation) return;
-    
-    console.log('Loading messages for:', conversationId); // Debug log
-    setSelectedConversation(conversationId);
-    setMessages([]);
-    setPage(0);
-    setHasMoreMessages(true);
-    setUnread((prev) => ({ ...prev, [conversationId]: false }));
-    
-    socket.emit('getMessages', { 
-      conversationId, 
-      limit: 20 
-    });
-    markMessagesAsSeen(conversationId);
-  }, [socket, selectedConversation, markMessagesAsSeen]);
-
-  const loadMoreMessages = useCallback(() => {
-    if (!socket || !selectedConversation || loadingMore || !hasMoreMessages) return;
-    
-    console.log('Loading more messages, page:', page + 1); // Debug log
-    setLoadingMore(true);
-    const nextPage = page + 1;
-    socket.emit('getMessages', {
-      conversationId: selectedConversation,
-      skip: nextPage * 20,
-      limit: 20,
-    });
-    setPage(nextPage);
-  }, [socket, selectedConversation, loadingMore, hasMoreMessages, page]);
-
-  const sendMessage = useCallback(() => {
-    if (!newMessage || !selectedConversation || !socket || isSending) return;
-
-    console.log('Sending message:', newMessage); // Debug log
-    setIsSending(true);
-    
-    // Optimistically add the message
-    const tempMessage: Message = {
-      id: Date.now(), // Temporary ID
-      senderId: session?.user?.id || 0,
-      conversationId: selectedConversation,
-      content: newMessage,
-      read: false,
-      sentAt: new Date()
-    };
-    
-    setMessages(prev => [tempMessage, ...prev]);
-    setNewMessage("");
-    moveConversationToTop(selectedConversation);
-    setTimeout(scrollToBottom, 50);
-
-    socket.emit('sendMessage', {
-      conversationId: selectedConversation,
-      content: newMessage,
-    });
-  }, [newMessage, selectedConversation, socket, moveConversationToTop, isSending, session, scrollToBottom]);
-
-  if (!session) return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  const selectedConversationObj = conversations.find((c) => c.id === selectedConversation);
 
   return (
     <div className="flex flex-col h-screen">
@@ -391,7 +373,7 @@ export default function ChatPage() {
               ))
             ) : (
               <div className="p-4 text-center text-gray-500">
-                {initialLoadComplete ? 'No conversations found' : 'Loading conversations...'}
+                No conversations found
               </div>
             )}
           </div>
@@ -462,8 +444,8 @@ export default function ChatPage() {
                         </div>
                       </div>
                     ))}
-                    <div ref={sentinelRef} className="h-1" />
-                    {loadingMore && (
+                    <div ref={sentinelRef} />
+                    {isFetchingNextPage && (
                       <div className="flex justify-center p-2">
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400" />
                       </div>
@@ -471,36 +453,10 @@ export default function ChatPage() {
                   </>
                 ) : (
                   <div className="flex-1 flex items-center justify-center text-gray-500">
-                    {loadingMore ? 'Loading messages...' : 'No messages yet'}
+                    No messages yet
                   </div>
                 )}
               </div>
-              
-              {/* Scroll to bottom button */}
-              {showScrollButton && (
-                <button
-                  onClick={() => {
-                    scrollToBottom();
-                    if (selectedConversation) {
-                      markMessagesAsSeen(selectedConversation);
-                    }
-                  }}
-                  className="fixed bottom-20 right-4 md:right-72 bg-blue-500 text-white p-2 rounded-full shadow-lg z-10"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 10.293a1 1 0 010 1.414l-6 6a1 1 0 01-1.414 0l-6-6a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l4.293-4.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </button>
-              )}
               
               <div className="p-4 border-t bg-white">
                 <div className="flex items-center">
@@ -516,14 +472,14 @@ export default function ChatPage() {
                     }}
                     placeholder="Type a message..."
                     className="flex-1 px-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    disabled={!isConnected || isSending}
+                    disabled={!isConnected || sendMessageMutation.isPending}
                   />
                   <button
                     onClick={sendMessage}
-                    disabled={!isConnected || !newMessage || isSending}
+                    disabled={!isConnected || !newMessage || sendMessageMutation.isPending}
                     className="ml-2 p-2 bg-blue-500 text-white rounded-full disabled:bg-gray-300"
                   >
-                    {isSending ? (
+                    {sendMessageMutation.isPending ? (
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
                     ) : (
                       <svg
@@ -549,71 +505,7 @@ export default function ChatPage() {
             </div>
           )}
         </div>
-
-        {/* User info sidebar */}
-        {selectedConversationObj?.user && (
-          <div className="hidden lg:block w-72 border-l p-4 overflow-y-auto">
-            <div className="flex flex-col items-center">
-              <div className="w-24 h-24 rounded-full overflow-hidden mb-4">
-                {selectedConversationObj.user.image?.url ? (
-                  <Image 
-                    src={selectedConversationObj.user.image.url} 
-                    alt="" 
-                    width={96} 
-                    height={96} 
-                    className="object-cover"
-                  />
-                ) : (
-                  <UserAvatar userName={selectedConversationObj.user.username} height={96} />
-                )}
-              </div>
-              
-              <h3 className="text-xl font-semibold">
-                {selectedConversationObj.user.fullName}
-              </h3>
-              <p className="text-gray-500">
-                @{selectedConversationObj.user.username}
-              </p>
-              
-              <div className="mt-2 flex items-center">
-                <div className={`w-2 h-2 rounded-full mr-1 ${
-                  selectedConversationObj.user.isOnline ? 'bg-green-500' : 'bg-gray-400'
-                }`} />
-                <span className="text-sm text-gray-500">
-                  {selectedConversationObj.user.isOnline ? 'Online' : 'Offline'}
-                </span>
-              </div>
-            </div>
-            
-            <div className="mt-6 space-y-4">
-              <div>
-                <h4 className="text-sm font-medium text-gray-500">Email</h4>
-                <a 
-                  href={`mailto:${selectedConversationObj.user.email}`} 
-                  className="text-blue-500 hover:underline"
-                >
-                  {selectedConversationObj.user.email}
-                </a>
-              </div>
-              
-              <div>
-                <h4 className="text-sm font-medium text-gray-500">Phone</h4>
-                <a 
-                  href={`tel:${selectedConversationObj.user.phone}`} 
-                  className="text-blue-500 hover:underline"
-                >
-                  {formatPhone(selectedConversationObj.user.phone)}
-                </a>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
-      
-      
     </div>
   );
-}
-function formatPhone(phone: string): string {
-  return phone.replace(/(\d{2})(?=\d)/g, "$1 ").trim();
 }

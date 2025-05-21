@@ -1,9 +1,9 @@
-// components/SocketProvider.tsx
 'use client';
 
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useSession } from 'next-auth/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 type SocketContextType = {
   socket: Socket | null;
@@ -18,6 +18,7 @@ const SocketContext = createContext<SocketContextType>({
 });
 
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
+  const [queryClient] = useState(() => new QueryClient());
   const { data: session } = useSession();
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -32,13 +33,12 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       transports: ['websocket'],
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: Infinity, // Keep trying to reconnect
-      reconnectionDelay: 1000,       // Start with 1 second delay
-      reconnectionDelayMax: 5000,    // Maximum 5 seconds delay
-      randomizationFactor: 0.5,      // Randomize reconnection timing
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      randomizationFactor: 0.5,
     });
 
-    // Connection status handlers
     const onConnect = () => {
       setIsConnected(true);
       setError(null);
@@ -55,20 +55,15 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       console.error('Socket error:', err);
     };
 
-    // Set up event listeners
     socketRef.current.on('connect', onConnect);
     socketRef.current.on('disconnect', onDisconnect);
     socketRef.current.on('error', onError);
 
-    // Cleanup function
     return () => {
       if (socketRef.current) {
-        // Remove all listeners
         socketRef.current.off('connect', onConnect);
         socketRef.current.off('disconnect', onDisconnect);
         socketRef.current.off('error', onError);
-        
-        // Only disconnect when provider unmounts (page refresh/close)
         socketRef.current.disconnect();
         socketRef.current = null;
       }
@@ -76,13 +71,15 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   }, [session?.backendToken?.accessToken]);
 
   return (
-    <SocketContext.Provider value={{ 
-      socket: socketRef.current,
-      isConnected,
-      error
-    }}>
-      {children}
-    </SocketContext.Provider>
+    <QueryClientProvider client={queryClient}>
+      <SocketContext.Provider value={{ 
+        socket: socketRef.current,
+        isConnected,
+        error
+      }}>
+        {children}
+      </SocketContext.Provider>
+    </QueryClientProvider>
   );
 };
 
