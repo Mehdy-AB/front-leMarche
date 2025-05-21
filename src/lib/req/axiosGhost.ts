@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const axiosGhost = axios.create({
-  baseURL: 'http://localhost:8000',
+  baseURL: process.env.Backend_URL,
 });
 
 export default axiosGhost;

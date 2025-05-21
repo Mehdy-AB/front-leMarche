@@ -3,7 +3,7 @@ import { jwtDecode } from "jwt-decode";
 import { getSession, signOut } from "next-auth/react";
 
 const axiosClient = axios.create({
-  baseURL: "http://localhost:8000",
+  baseURL: process.env.Backend_URL,
 });
 
 let isRefreshing = false;
