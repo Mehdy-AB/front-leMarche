@@ -19,7 +19,7 @@ import { getMyAdById, updateAd } from "@/lib/req/user";
 import { UserAdType } from "@/lib/types/types";
 import ImageDnDEdit from "@/components/imageDnD/ImageDnDEdit";
 
-export const transformAdToFormValues = (ad: UserAdType): UpdateAdsFormValues => {
+const transformAdToFormValues = (ad: UserAdType): UpdateAdsFormValues => {
   return {
     title: ad.ad.title,
     description: ad.ad.description,

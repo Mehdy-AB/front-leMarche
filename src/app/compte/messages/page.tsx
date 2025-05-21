@@ -1,16 +1,21 @@
 // app/chat/page.tsx
-'use client';
+"use client";
 
-import { useSession } from 'next-auth/react';
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
-import { useInView } from 'react-intersection-observer';
-import Header from '@/components/home/Header';
-import Footer from '@/components/home/Footer';
-import { UserAvatar } from '@/components/all/UserAvatar';
-import Image from 'next/image';
-import { useSocket } from '@/app/socket-provider';
-import Loader from '@/lib/loaders/LineLoader';
+import { useSession } from "next-auth/react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  useInfiniteQuery,
+} from "@tanstack/react-query";
+import { useInView } from "react-intersection-observer";
+import Header from "@/components/home/Header";
+import Footer from "@/components/home/Footer";
+import { UserAvatar } from "@/components/all/UserAvatar";
+import Image from "next/image";
+import { useSocket } from "@/app/socket-provider";
+import Loader from "@/lib/loaders/LineLoader";
 
 type ConversationItem = {
   id: number;
@@ -50,7 +55,9 @@ export default function ChatPage() {
   const { socket, isConnected } = useSocket();
   const { data: session } = useSession();
   const queryClient = useQueryClient();
-  const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
+  const [selectedConversation, setSelectedConversation] = useState<
+    number | null
+  >(null);
   const [newMessage, setNewMessage] = useState("");
   const [unread, setUnread] = useState<Record<number, boolean>>({});
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -59,14 +66,28 @@ export default function ChatPage() {
   const { ref: sentinelRef, inView } = useInView();
 
   // Fetch conversations
-  const { data: conversations = [] } = useQuery<ConversationItem[]>({
-    queryKey: ['conversations'],
-    queryFn: () => new Promise((resolve) => {
-      if (!socket) return resolve([]);
-      socket.emit('getContacts', {}, (response: { conversation: ConversationItem[] }) => {
-        resolve(response.conversation);
-      });
-    }),
+  const { data: conversations = [] } = useQuery({
+    queryKey: ["conversations"],
+    queryFn: () =>
+      new Promise((resolve) => {
+        if (!socket) return resolve([]);
+        // Explicitly request 20 conversations
+        socket.emit(
+          "getContacts",
+          { limit: 20 },
+          (response: {
+            conversation: ConversationItem[];
+            hasMore: boolean;
+          }) => {
+            console.log(
+              "Initial conversations loaded:",
+              response.conversation.length
+            );
+
+            resolve(response.conversation);
+          }
+        );
+      }),
     enabled: !!socket,
     initialData: [],
   });
@@ -78,19 +99,26 @@ export default function ChatPage() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['messages', selectedConversation],
+    queryKey: ["messages", selectedConversation],
     queryFn: async ({ pageParam = 0 }) => {
-      if (!socket || !selectedConversation) return { messages: [], hasMore: false };
-      
-      return new Promise<{ messages: Message[]; hasMore: boolean }>((resolve) => {
-        socket.emit('getMessages', { 
-          conversationId: selectedConversation,
-          skip: pageParam * 20,
-          limit: 20,
-        }, (data: { messages: Message[]; hasMore: boolean }) => {
-          resolve(data);
-        });
-      });
+      if (!socket || !selectedConversation)
+        return { messages: [], hasMore: false };
+
+      return new Promise<{ messages: Message[]; hasMore: boolean }>(
+        (resolve) => {
+          socket.emit(
+            "getMessages",
+            {
+              conversationId: selectedConversation,
+              skip: pageParam * 20,
+              limit: 20,
+            },
+            (data: { messages: Message[]; hasMore: boolean }) => {
+              resolve(data);
+            }
+          );
+        }
+      );
     },
     getNextPageParam: (lastPage, allPages) => {
       return lastPage.hasMore ? allPages.length : undefined;
@@ -99,20 +127,24 @@ export default function ChatPage() {
     initialPageParam: 0,
   });
 
-  const messages = messagesData?.pages.flatMap(page => page.messages) || [];
+  const messages = messagesData?.pages.flatMap((page) => page.messages) || [];
 
   // Mutation for sending messages
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
       if (!socket || !selectedConversation) return;
-      
+
       return new Promise<Message>((resolve) => {
-        socket.emit('sendMessage', {
-          conversationId: selectedConversation,
-          content,
-        }, (message: Message) => {
-          resolve(message);
-        });
+        socket.emit(
+          "sendMessage",
+          {
+            conversationId: selectedConversation,
+            content,
+          },
+          (message: Message) => {
+            resolve(message);
+          }
+        );
       });
     },
     onMutate: async (content) => {
@@ -123,50 +155,64 @@ export default function ChatPage() {
         conversationId: selectedConversation || 0,
         content,
         read: false,
-        sentAt: new Date()
+        sentAt: new Date(),
       };
-      
-      queryClient.setQueryData(['messages', selectedConversation], (old: any) => {
-        return {
-          pages: [
-            { messages: [tempMessage, ...(old?.pages?.[0]?.messages || [])], 
-            hasMore: old?.pages?.[0]?.hasMore || false
-          },
-            ...old?.pages?.slice(1) || []
-          ]
-        };
-      });
-      
+
+      queryClient.setQueryData(
+        ["messages", selectedConversation],
+        (old: any) => {
+          return {
+            pages: [
+              {
+                messages: [tempMessage, ...(old?.pages?.[0]?.messages || [])],
+                hasMore: old?.pages?.[0]?.hasMore || false,
+              },
+              ...(old?.pages?.slice(1) || []),
+            ],
+          };
+        }
+      );
+
       return { tempMessage };
     },
     onSuccess: (message, _, context) => {
       // Replace optimistic update with real message
-      queryClient.setQueryData(['messages', selectedConversation], (old: any) => {
-        return {
-          pages: old.pages.map((page: any, i: number) => ({
-            ...page,
-            messages: i === 0 
-              ? page.messages.map((m: Message) => 
-                  m.id === context?.tempMessage.id ? message : m
-                )
-              : page.messages
-          }))
-        };
-      });
+      queryClient.setQueryData(
+        ["messages", selectedConversation],
+        (old: any) => {
+          return {
+            pages: old.pages.map((page: any, i: number) => ({
+              ...page,
+              messages:
+                i === 0
+                  ? page.messages.map((m: Message) =>
+                      m.id === context?.tempMessage.id ? message : m
+                    )
+                  : page.messages,
+            })),
+          };
+        }
+      );
     },
     onError: () => {
       // Rollback optimistic update
-      queryClient.setQueryData(['messages', selectedConversation], (old: any) => {
-        return {
-          pages: old.pages.map((page: any, i: number) => ({
-            ...page,
-            messages: i === 0 
-              ? page.messages.filter((m: Message) => m.id !== context?.tempMessage.id)
-              : page.messages
-          }))
-        };
-      });
-    }
+      queryClient.setQueryData(
+        ["messages", selectedConversation],
+        (old: any) => {
+          return {
+            pages: old.pages.map((page: any, i: number) => ({
+              ...page,
+              messages:
+                i === 0
+                  ? page.messages.filter(
+                      (m: Message) => m.id !== context?.tempMessage.id
+                    )
+                  : page.messages,
+            })),
+          };
+        }
+      );
+    },
   });
 
   // Load more messages when sentinel is in view
@@ -191,16 +237,19 @@ export default function ChatPage() {
       }
 
       // Update messages cache
-      queryClient.setQueryData(['messages', message.conversationId], (old: any) => {
-        if (!old) return { pages: [{ messages: [message], hasMore: false }] };
-        
-        return {
-          pages: old.pages.map((page: any, i: number) => ({
-            ...page,
-            messages: i === 0 ? [message, ...page.messages] : page.messages
-          }))
-        };
-      });
+      queryClient.setQueryData(
+        ["messages", message.conversationId],
+        (old: any) => {
+          if (!old) return { pages: [{ messages: [message], hasMore: false }] };
+
+          return {
+            pages: old.pages.map((page: any, i: number) => ({
+              ...page,
+              messages: i === 0 ? [message, ...page.messages] : page.messages,
+            })),
+          };
+        }
+      );
 
       if (isCurrentChat && isAtBottom && !isFromMe) {
         setTimeout(() => {
@@ -211,26 +260,26 @@ export default function ChatPage() {
     };
 
     const onMessagesSeen = ({ conversationId }: { conversationId: number }) => {
-      queryClient.setQueryData(['messages', conversationId], (old: any) => {
+      queryClient.setQueryData(["messages", conversationId], (old: any) => {
         if (!old) return old;
-        
+
         return {
           pages: old.pages.map((page: any) => ({
             ...page,
             messages: page.messages.map((m: Message) =>
               m.conversationId === conversationId ? { ...m, read: true } : m
-            )
-          }))
+            ),
+          })),
         };
       });
     };
 
-    socket.on('receiveMessage', onReceiveMessage);
-    socket.on('messagesSeen', onMessagesSeen);
+    socket.on("receiveMessage", onReceiveMessage);
+    socket.on("messagesSeen", onMessagesSeen);
 
     return () => {
-      socket.off('receiveMessage', onReceiveMessage);
-      socket.off('messagesSeen', onMessagesSeen);
+      socket.off("receiveMessage", onReceiveMessage);
+      socket.off("messagesSeen", onMessagesSeen);
     };
   }, [socket, session, selectedConversation, isAtBottom, queryClient]);
 
@@ -240,26 +289,38 @@ export default function ChatPage() {
     }
   }, []);
 
-  const markMessagesAsSeen = useCallback((conversationId: number) => {
-    if (!socket) return;
-    socket.emit('markAsSeen', { conversationId });
-  }, [socket]);
+  const markMessagesAsSeen = useCallback(
+    (conversationId: number) => {
+      if (!socket) return;
+      socket.emit("markAsSeen", { conversationId });
+    },
+    [socket]
+  );
 
-  const moveConversationToTop = useCallback((conversationId: number) => {
-    queryClient.setQueryData(['conversations'], (old: ConversationItem[] = []) => {
-      const existing = old.find((c) => c.id === conversationId);
-      if (!existing) return old;
-      return [existing, ...old.filter((c) => c.id !== conversationId)];
-    });
-  }, [queryClient]);
+  const moveConversationToTop = useCallback(
+    (conversationId: number) => {
+      queryClient.setQueryData(
+        ["conversations"],
+        (old: ConversationItem[] = []) => {
+          const existing = old.find((c) => c.id === conversationId);
+          if (!existing) return old;
+          return [existing, ...old.filter((c) => c.id !== conversationId)];
+        }
+      );
+    },
+    [queryClient]
+  );
 
-  const loadMessages = useCallback((conversationId: number) => {
-    if (!socket || conversationId === selectedConversation) return;
-    
-    setSelectedConversation(conversationId);
-    setUnread((prev) => ({ ...prev, [conversationId]: false }));
-    markMessagesAsSeen(conversationId);
-  }, [socket, selectedConversation, markMessagesAsSeen]);
+  const loadMessages = useCallback(
+    (conversationId: number) => {
+      if (!socket || conversationId === selectedConversation) return;
+
+      setSelectedConversation(conversationId);
+      setUnread((prev) => ({ ...prev, [conversationId]: false }));
+      markMessagesAsSeen(conversationId);
+    },
+    [socket, selectedConversation, markMessagesAsSeen]
+  );
 
   const sendMessage = useCallback(() => {
     if (!newMessage || !selectedConversation) return;
@@ -267,16 +328,22 @@ export default function ChatPage() {
     setNewMessage("");
     moveConversationToTop(selectedConversation);
     setTimeout(scrollToBottom, 50);
-  }, [newMessage, selectedConversation, sendMessageMutation, moveConversationToTop, scrollToBottom]);
+  }, [
+    newMessage,
+    selectedConversation,
+    sendMessageMutation,
+    moveConversationToTop,
+    scrollToBottom,
+  ]);
 
   const checkScrollPosition = useCallback(() => {
     if (!messageContainerRef.current) return;
-    
+
     const { scrollTop } = messageContainerRef.current;
     const atBottom = scrollTop === 0;
-    
+
     setIsAtBottom(atBottom);
-    
+
     if (atBottom && selectedConversation) {
       markMessagesAsSeen(selectedConversation);
     }
@@ -286,20 +353,22 @@ export default function ChatPage() {
     const container = messageContainerRef.current;
     if (!container) return;
 
-    container.addEventListener('scroll', checkScrollPosition);
+    container.addEventListener("scroll", checkScrollPosition);
     return () => {
-      container.removeEventListener('scroll', checkScrollPosition);
+      container.removeEventListener("scroll", checkScrollPosition);
     };
   }, [checkScrollPosition]);
 
-  if (!session) return <Loader/>
+  if (!session) return <Loader />;
 
-  const selectedConversationObj = conversations.find((c) => c.id === selectedConversation);
+  const selectedConversationObj = conversations.find(
+    (c) => c.id === selectedConversation
+  );
 
   return (
     <div className="flex flex-col h-screen">
       <Header session={session} />
-      
+
       <div className="flex flex-1 overflow-hidden bg-gray-50">
         {/* Mobile sidebar toggle */}
         <button
@@ -312,7 +381,9 @@ export default function ChatPage() {
         {/* Conversations sidebar */}
         <div
           className={`fixed md:static inset-y-0 left-0 w-72 bg-white border-r z-10 transform ${
-            mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+            mobileSidebarOpen
+              ? "translate-x-0"
+              : "-translate-x-full md:translate-x-0"
           } transition-transform duration-300`}
         >
           <div className="p-4 border-b flex justify-between items-center bg-white">
@@ -324,7 +395,7 @@ export default function ChatPage() {
               ✕
             </button>
           </div>
-          
+
           <div className="overflow-y-auto h-[calc(100%-60px)]">
             {conversations.length > 0 ? (
               conversations.map((conv) => (
@@ -335,17 +406,17 @@ export default function ChatPage() {
                     setMobileSidebarOpen(false);
                   }}
                   className={`flex items-center p-3 border-b cursor-pointer hover:bg-gray-50 ${
-                    conv.id === selectedConversation ? 'bg-blue-50' : ''
+                    conv.id === selectedConversation ? "bg-blue-50" : ""
                   }`}
                 >
                   <div className="relative">
                     <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200">
                       {conv.user.image?.url ? (
-                        <Image 
-                          src={conv.user.image.url} 
-                          alt="" 
-                          width={48} 
-                          height={48} 
+                        <Image
+                          src={conv.user.image.url}
+                          alt=""
+                          width={48}
+                          height={48}
                           className="object-cover"
                         />
                       ) : (
@@ -356,16 +427,18 @@ export default function ChatPage() {
                       <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
                     )}
                   </div>
-                  
+
                   <div className="ml-3 flex-1 min-w-0">
                     <p className="font-medium truncate">
                       {conv.ad?.title || conv.user.fullName}
                     </p>
                     <p className="text-sm text-gray-500 truncate">
-                      {conv.ad?.title ? 'Ad: ' + conv.ad.title : conv.user.username}
+                      {conv.ad?.title
+                        ? "Ad: " + conv.ad.title
+                        : conv.user.username}
                     </p>
                   </div>
-                  
+
                   {unread[conv.id] && (
                     <div className="w-2 h-2 bg-red-500 rounded-full" />
                   )}
@@ -386,15 +459,18 @@ export default function ChatPage() {
               <div className="p-4 border-b flex items-center">
                 <div className="w-10 h-10 rounded-full overflow-hidden mr-3">
                   {selectedConversationObj?.user.image?.url ? (
-                    <Image 
-                      src={selectedConversationObj.user.image.url} 
-                      alt="" 
-                      width={40} 
-                      height={40} 
+                    <Image
+                      src={selectedConversationObj.user.image.url}
+                      alt=""
+                      width={40}
+                      height={40}
                       className="object-cover"
                     />
                   ) : (
-                    <UserAvatar userName={selectedConversationObj?.user.username || ''} height={40} />
+                    <UserAvatar
+                      userName={selectedConversationObj?.user.username || ""}
+                      height={40}
+                    />
                   )}
                 </div>
                 <div>
@@ -402,12 +478,14 @@ export default function ChatPage() {
                     {selectedConversationObj?.user.fullName}
                   </h3>
                   <p className="text-sm text-gray-500">
-                    {selectedConversationObj?.user.isOnline ? 'Online' : 'Offline'}
+                    {selectedConversationObj?.user.isOnline
+                      ? "Online"
+                      : "Offline"}
                   </p>
                 </div>
               </div>
-              
-              <div 
+
+              <div
                 ref={messageContainerRef}
                 className="flex-1 overflow-y-auto flex flex-col-reverse p-4"
               >
@@ -416,28 +494,34 @@ export default function ChatPage() {
                     {messages.map((message) => (
                       <div
                         key={message.id}
-                        className={`flex mb-3 ${message.senderId === session.user.id ? 'justify-end' : 'justify-start'}`}
+                        className={`flex mb-3 ${
+                          message.senderId === session.user.id
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
                       >
                         <div
                           className={`max-w-xs px-4 py-2 rounded-lg ${
-                            message.senderId === session.user.id 
-                              ? 'bg-blue-500 text-white rounded-br-none' 
-                              : 'bg-gray-200 text-gray-800 rounded-bl-none'
+                            message.senderId === session.user.id
+                              ? "bg-blue-500 text-white rounded-br-none"
+                              : "bg-gray-200 text-gray-800 rounded-bl-none"
                           }`}
                         >
                           <p>{message.content}</p>
-                          <div className={`text-xs mt-1 flex items-center ${
-                            message.senderId === session.user.id 
-                              ? 'text-blue-100 justify-end' 
-                              : 'text-gray-500 justify-start'
-                          }`}>
+                          <div
+                            className={`text-xs mt-1 flex items-center ${
+                              message.senderId === session.user.id
+                                ? "text-blue-100 justify-end"
+                                : "text-gray-500 justify-start"
+                            }`}
+                          >
                             {new Date(message.sentAt).toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit'
+                              hour: "2-digit",
+                              minute: "2-digit",
                             })}
                             {message.senderId === session.user.id && (
                               <span className="ml-1">
-                                {message.read ? '✓✓' : '✓'}
+                                {message.read ? "✓✓" : "✓"}
                               </span>
                             )}
                           </div>
@@ -457,7 +541,7 @@ export default function ChatPage() {
                   </div>
                 )}
               </div>
-              
+
               <div className="p-4 border-t bg-white">
                 <div className="flex items-center">
                   <input
@@ -465,7 +549,7 @@ export default function ChatPage() {
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
+                      if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
                         sendMessage();
                       }
@@ -476,7 +560,11 @@ export default function ChatPage() {
                   />
                   <button
                     onClick={sendMessage}
-                    disabled={!isConnected || !newMessage || sendMessageMutation.isPending}
+                    disabled={
+                      !isConnected ||
+                      !newMessage ||
+                      sendMessageMutation.isPending
+                    }
                     className="ml-2 p-2 bg-blue-500 text-white rounded-full disabled:bg-gray-300"
                   >
                     {sendMessageMutation.isPending ? (
@@ -501,7 +589,9 @@ export default function ChatPage() {
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">
-              <p className="text-gray-500">Select a conversation to start chatting</p>
+              <p className="text-gray-500">
+                Select a conversation to start chatting
+              </p>
             </div>
           )}
         </div>
