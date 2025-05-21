@@ -20,7 +20,7 @@ export default function SettingsPageFr() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header session={session.data} router={router} />
+      <Header session={session.data}/>
 
       <div className="flex-1 px-4 py-6 md:px-10 lg:px-40 flex flex-col md:flex-row gap-6">
         {/* Sidebar */}

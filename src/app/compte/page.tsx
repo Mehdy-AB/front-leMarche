@@ -28,7 +28,7 @@ export default function ProductsPage() {
     // Add more ads here
   return (
     <main className="font-poppins">
-      <Header session={session?.data} router={router} />
+      <Header session={session?.data} />
       <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6">
       {/* Main Ads Section */}
       <div className="flex-1 space-y-4">

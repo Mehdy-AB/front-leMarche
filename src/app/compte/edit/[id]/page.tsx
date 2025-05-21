@@ -110,7 +110,7 @@ const newAd = () => {
     else
     return (
         <main>
-        <Header session={session.data} router={router}/>
+        <Header session={session.data}/>
        {!ad? 
        <section className="max-w-7xl mx-auto px-4 py-10 animate-pulse">
         <div className="h-8 w-1/3 mb-8 bg-gray-300 rounded" />
