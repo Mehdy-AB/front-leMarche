@@ -62,7 +62,7 @@ export default function ChatPage() {
 
   const messageContainerRef = useRef<HTMLDivElement>(null);
   const selectedConversationObj = conversations.find((c) => c.id === selectedConversation);
-  const observerRef = useRef<IntersectionObserver>();
+  const observerRef = useRef<IntersectionObserver>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const scrollPositionRef = useRef<number>(0);
 
