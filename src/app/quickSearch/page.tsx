@@ -38,7 +38,7 @@ export default function QuickSearch(){
     }
 
     const components = [
-            <BrandAndlocation displayBrands={displayBrands} submit={(data)=>{
+            <BrandAndlocation key={0} displayBrands={displayBrands} submit={(data)=>{
               if(!typeId){
                 router.push('/')
                 return;
@@ -47,7 +47,7 @@ export default function QuickSearch(){
               setValue('type',{id:typeId,  brand:data.brand})
               setEtape(1);
             }} goBack={()=>router.push('/')} brands={brands as brands} region={region as region}/>,
-            <Filter displayBrands={displayBrands} brandsId={getValues('type')?.brand?.map(b=>b.id)||[]} typeId={typeId || 1} handleSubmit={handleSubmit(onSubmit)} goBack={()=>setEtape(0)} />
+            <Filter key={1} displayBrands={displayBrands} brandsId={getValues('type')?.brand?.map(b=>b.id)||[]} typeId={typeId || 1} handleSubmit={handleSubmit(onSubmit)} goBack={()=>setEtape(0)} />
         ]
     const pageDescription =['Indiquez votre région et la marque du véhicule pour voir les annonces les plus pertinentes près de chez vous.']
   

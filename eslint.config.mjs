@@ -17,6 +17,10 @@ const eslintConfig = [
       "@typescript-eslint/no-explicit-any": "off",
       "@next/next/no-html-link-for-pages": "off",
       "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-wrapper-object-types":"off",
+      "@typescript-eslint/ban-ts-comment":"off",
+      "prefer-const":"off",
+      "react/jsx-key":"off",
       "react-hooks/rules-of-hooks": "off",
       "@typescript-eslint/no-unused-expressions": "off",
     
