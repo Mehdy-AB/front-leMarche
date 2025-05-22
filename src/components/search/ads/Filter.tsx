@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import {  FormProvider, useForm } from 'react-hook-form';
 import {  FilterDto, filterDtoSchema } from '@/lib/validation/all.schema';
 import MaxMinInput from './max-min-input';
-import MaxMinInputPrice from '@/components/search/quickSearch/max-min-inputPrice';
+import MaxMinInputPrice from '@/components/search/ads/max-min-inputPrice';
 import CheckDropdown from './check-dropdown';
 import ModelesDropdown from '@/components/search/quickSearch/modeles-dropdown';
 import { getAttributes, getBrandsByid, getModelesByid, getRegions, getTypesByid } from '@/lib/req/ghost';
@@ -22,12 +22,11 @@ export default function FullFilter({
 }: {
   handleSubmitData: (data: FilterDto) => void
 }) {
-  const form = useForm<FilterDto>({resolver: zodResolver(filterDtoSchema as any)});
+  const form = useForm<FilterDto>({mode: "onChange",resolver: zodResolver(filterDtoSchema as any)});
   const { reset,getValues,watch,setValue,register ,handleSubmit} = form;
   const [brands, setBrands] = useState<{brands:brands,isloading:boolean}>({brands:[],isloading:true});
   const [types, setTypes] = useState<{types:types,isloading:boolean}>({types:[],isloading:true});
   const [modeles, setModeles] = useState<{modeles:modeles,isloding:boolean}>({modeles:[],isloding:true});
-  const [searchTerm, setSearchTerm] = useState('');
   const [collapsed, setCollapsed] = useState(true);
   const searchParams = useSearchParams();
   const [region, setRegion] = useState<region>([]);
@@ -159,19 +158,7 @@ export default function FullFilter({
         <div className="w-full bg-white border rounded-md shadow-sm px-3 py-2">
         <div className="w-full bg-white border rounded-md shadow-sm px-3 py-2">
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-            {/* Search */}
-            <div className="flex flex-col">
-              <label className="font-semibold mb-1 border-l-4 pl-2">Recherche</label>
-              <input
-                {...register("search")}
-                type="text"
-                placeholder="Rechercher un véhicule..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-colorOne"
-              />
-            </div>
-
+            
             {/* Brand */}
             <div className="flex flex-col">
               <label className="font-semibold mb-1 border-l-4 pl-2">Categories</label>
@@ -183,7 +170,11 @@ export default function FullFilter({
               <label className="font-semibold mb-1 border-l-4 pl-2">Région</label>
               <LocationDropdown regions={region} />
             </div>
-
+            {/* Price */}
+            <div className='flex flex-col'>
+                <label className="font-semibold text-sm mb-1 block border-l-4 pl-2 ">Prix</label>
+                <MaxMinInputPrice min={0} unit="€" />
+            </div>
             {/* Trier par (Sort) */}
             <div className="flex flex-col">
               <label className="font-semibold mb-1 border-l-4 pl-2">Trier par</label>
@@ -226,33 +217,26 @@ export default function FullFilter({
         </div><div
           className={`transition-all duration-300 ease-in-out overflow-hidden ${collapsed ? 'max-h-0' : 'max-h-[1000px]'}`}
         >
-            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${displayBrands&&'col-span-2'}`}>
-              <div>
-                <label className="font-semibold text-sm mb-1 block border-l-4 pl-2 border-colorOne">Prix</label>
-                <MaxMinInputPrice min={0} unit="€" />
-              </div>
-              {displayBrands&&<div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-6">
+              {displayBrands&&<div className='grid col-span-1 sm:col-span-2 grid-cols-1 sm:grid-cols-2 gap-4'>
                 <div className="flex flex-col">
-                  <label className="font-semibold text-sm mb-1 border-l-4 pl-2 border-colorOne">Marque</label>
+                  <label className="font-semibold text-sm mb-1 border-l-4 pl-2 ">Marque</label>
                   <BrandDropdown brands={brands} />
                 </div>
                 <div className="flex flex-col">
-                  <label className="font-semibold text-sm mb-1 block border-l-4 pl-2 border-colorOne">Modèles</label>
+                  <label className="font-semibold text-sm mb-1 block border-l-4 pl-2">Modèles</label>
                   <ModelesDropdown isLoading={modeles.isloding} modeles={modeles.modeles} />
                 </div>
                 
               </div>}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-6">
               {attributes.data.map((attribute, idx) => (
                 <div key={attribute.id} className="flex flex-col">
-                  <label className="text-sm font-semibold mb-1 border-l-4 pl-2 border-colorOne">
+                  <label className={`text-sm font-semibold mb-1 border-l-4 pl-2 `}>
                     {attribute.name}
                   </label>
                   {attribute.type !== 'SELECT' ? (
                     <MaxMinInput
-                      attributeId={attribute.id}
                       min={attribute.min || undefined}
                       max={attribute.max || undefined}
                       step={attribute.step || undefined}
@@ -266,7 +250,7 @@ export default function FullFilter({
                         id: opt.id,
                         name: opt.value,
                       }))}
-                      placeholder={attribute.name} />
+                      placeholder={'Sélectionner'} />
                   )}
                 </div>
               ))}

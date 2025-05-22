@@ -3,7 +3,7 @@ import { Geist, Geist_Mono, Poppins } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/providers/Providers";
 import { cookies } from "next/headers";
-import { SocketProvider } from "./socket-provider";
+import { SocketProvider } from "../components/providers/socket-provider";
 // export function getThemeClass() {
 //   const hour = new Date().getHours();
 

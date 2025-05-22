@@ -113,11 +113,13 @@ export default function LocationDropdown({ regions }: { regions: region }) {
         <Button
           variant="outline"
           className="w-full truncate max-h-16 text-left flex font-normal text-sm justify-between items-center"
-          title={selected.map(s => s.name).join(', ')}
-        >
-          <span className="truncate ">
-            {selected.length > 0 ? selected.map(s => s.name).join(', ') : `Sélectionner une localisation`}
-          </span>
+          title={selected.map(s => s.name).join(', ')}>
+          <span className="flex items-center w-full justify-between">
+              <span className='truncate '>{selected.length > 0 ? selected.map(s => s.name).join(', ') : <span className="text-gray-400">Sélectionner une localisation</span>}</span>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+              </svg>
+            </span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[350px] p-2">

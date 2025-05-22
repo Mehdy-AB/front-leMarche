@@ -17,11 +17,11 @@ type CheckDropdownProps = {
   attributeIndex:number
 };
 
-export default function CheckDropdown({ options, placeholder = "Select options",attributeIndex, attributeId }: CheckDropdownProps) {
+export default function CheckDropdown({ options, placeholder = "Sélectionner",attributeIndex, attributeId }: CheckDropdownProps) {
   const [open, setOpen] = useState(false);
-  const { setValue, getValues, control } = useFormContext<FilterDto>();
+  const {  control } = useFormContext<FilterDto>();
 
-  const { fields, append, update } = useFieldArray({
+  const { update } = useFieldArray({
     control,
     name: "attributes",
   });
@@ -30,9 +30,7 @@ export default function CheckDropdown({ options, placeholder = "Select options",
     name: `attributes.${attributeIndex}.value`,
   }) as number[] ||[];
 
-    const selected  = Array.isArray(watchedAttributeValue) ? watchedAttributeValue : [];
-
-
+  const selected  = Array.isArray(watchedAttributeValue) ? watchedAttributeValue : [];
   const handleToggle = (id: number) => {
     let updated: number[];
 
@@ -56,9 +54,15 @@ export default function CheckDropdown({ options, placeholder = "Select options",
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full h-fit truncate whitespace-normal break-words justify-between"
+            className="w-full h-fit py-3 truncate whitespace-normal break-words justify-between"
           >
-            {selected.length > 0 ? selectedNames : placeholder}
+            <span className="flex items-center w-full justify-between">
+              <span className='truncate '>{selected.length > 0 ? selectedNames : <span className="text-gray-400">{placeholder}</span>}</span>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+              </svg>
+            </span>
+            
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[300px] p-2">

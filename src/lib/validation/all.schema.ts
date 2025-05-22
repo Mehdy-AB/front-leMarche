@@ -36,8 +36,8 @@ export const adAttributeSchema = z.object({
 // Main filterDto
 export const filterDtoSchema = z.object({
   search: z.string().optional(),
-  minPrice: z.preprocess((val) => (isNaN(val as number) ? undefined : val), z.number().min(0).nullable().optional()),
-  maxPrice:  z.preprocess((val) => (isNaN(val as number) ? undefined : val), z.number().max(100000000000).nullable().optional()),
+  minPrice: z.preprocess((val) => (isNaN(val as number) ? undefined : val), z.number().nullable().optional()),
+  maxPrice:  z.preprocess((val) => (isNaN(val as number) ? undefined : val), z.number().nullable().optional()),
   locationIds: z.array(locationSchema).optional(),
   type: typeSchema.optional(),
   attributes: z.array(adAttributeSchema).optional(),

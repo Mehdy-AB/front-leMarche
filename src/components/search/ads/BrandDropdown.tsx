@@ -70,11 +70,11 @@ export default function BrandDropdown({ brands }: { brands: {brands:BrandsType,i
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="w-full truncate max-h-16 text-left flex justify-between items-center"
+          className="w-full truncate h-fit py-3 text-left flex justify-between items-center"
           title={selectedNames} // Show full names on hover
         >
           <span className="truncate">
-            {selected.length > 0 ? selectedNames : 'Sélectionner une marque'}
+            {selected.length > 0 ? selectedNames :<span className='text-gray-400 '>Sélectionner une marque</span>}
           </span>
         </Button>
       </PopoverTrigger>

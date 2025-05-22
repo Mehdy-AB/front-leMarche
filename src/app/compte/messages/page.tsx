@@ -14,7 +14,7 @@ import Header from "@/components/home/Header";
 import Footer from "@/components/home/Footer";
 import { UserAvatar } from "@/components/all/UserAvatar";
 import Image from "next/image";
-import { useSocket } from "@/app/socket-provider";
+import { useSocket } from "@/components/providers/socket-provider";
 import Loader from "@/lib/loaders/LineLoader";
 
 type ConversationItem = {

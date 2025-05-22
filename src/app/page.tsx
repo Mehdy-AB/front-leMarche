@@ -4,16 +4,42 @@ import Header from "@/components/home/Header";
 import { useSession } from "next-auth/react";
 import Image from 'next/image'
 import { useRouter } from "next/navigation";
-import {  useRef } from "react";
+import {  useEffect, useRef, useState } from "react";
 import LineLoader from "../lib/loaders/LineLoader";
-
+import { useLocalSearchStorage } from "@/components/hooks/useLocalSearchStorage";
+import { OneAd } from "@/components/all/OneAd";
+import { Ads } from "@/lib/types/types";
+import { FilterDto } from "@/lib/validation/all.schema";
+import { filterToQueryParams } from "@/lib/functions";
+type Search = {
+  title: string;
+  filters: FilterDto;
+  searchedAt:string
+};
 
 export default function Home() {
   const session = useSession();
   const [isloading] = [session.status === "loading"];
   const router = useRouter();
+  const [recentAds, setRecentAds] = useState<Ads>(fakeAds);
+  const [favoriteAds, setFavoriteAds] = useState<Ads>(fakeAds);
+  const [searchHistory, setSearchHistory] = useState<Search[]>(fakeSearchHistory);
   const scrollRef = useRef<HTMLDivElement>(null);
-  
+  const { getSearchHistory,getSearch,getRecentAds } = useLocalSearchStorage();
+
+  useEffect(() => {
+    const loadData = async () => {
+      const recent = await getRecentAds();
+     // const favorites = session.data?.user.favorite
+      const history = await getSearchHistory();
+      
+     // if (recent) setRecentAds(recent);
+      //if (favorites) setFavoriteAds(favorites);
+     // if (history) setSearchHistory(history);
+    };
+    
+    loadData();
+  }, []);
   const scroll = (direction: 'left' | 'right') => {
     const { current } = scrollRef;
     if (current) {
@@ -98,10 +124,75 @@ export default function Home() {
           </button>
         </div>
       </section>
+      {/* Search History */}
+      {searchHistory.length > 0 && (
+        <section className="mt-6">
+          <div className="max-w-6xl  mx-auto px-4">
+            <h2 className="text-2xl font-semibold mb-6 border-l-4 pl-2 border-colorOne">
+              Vos recherches récentes
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {searchHistory.slice(0, 3).map((search, idx) => (
+                <a 
+                  key={`search-${idx}`}
+                  href={`/search?filters=${filterToQueryParams(search.filters)}`}
+                  className="bg-white hover:bg-gray-50 p-4 rounded-lg shadow cursor-pointer"
+                >
+                  <h3 className="font-medium text-lg">{search.title || "Recherche sans titre"}</h3>
+                  <p className="text-gray-500 text-sm">
+                    {new Date(search.searchedAt).toLocaleDateString("fr-FR")}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {search.filters.type?.brand?.map(brand => (
+                      <span key={brand.id} className="bg-gray-100 px-2 py-1 rounded text-xs">
+                        {brand.id} {/* You might want to map id to brand name */}
+                      </span>
+                    ))}
+                    {search.filters.minPrice && (
+                      <span className="bg-gray-100 px-2 py-1 rounded text-xs">
+                        À partir de {search.filters.minPrice}€
+                      </span>
+                    )}
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+       {recentAds.length > 0 && (
+        <section className="py-6">
+          <div className="max-w-6xl mx-auto px-4">
+            <h2 className="text-2xl font-semibold mb-6 border-l-4 pl-2 border-colorOne">
+              Vos dernières consultations
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[1,2,3,4].slice(0, 4).map((_, idx) => (
+                <OneAd key={`recent-${idx}`} ad={{...recentAds[0],media:[{media:{url:adImages[idx]}}]}} setAds={setRecentAds} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
-  
+      {/* Favorite Ads */}
+      {favoriteAds.length > 0 && (
+        <section className=" bg-gray-50">
+          <div className="max-w-6xl mx-auto px-4">
+            <h2 className="text-2xl font-semibold mb-6 border-l-4 pl-2 border-colorOne">
+              Vos favoris
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[1,2,3,4].slice(0, 4).map((_, idx) => (
+                <OneAd key={`fav-${idx}`} ad={{...recentAds[0],media:[{media:{url:adImages[idx]}}]}} setAds={setFavoriteAds} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
     {/* Annonces Populaires */}
-    <section className="py-12">
+    <section className="py-6">
       <div className="max-w-6xl mx-auto px-4">
         <h2 className="text-2xl font-semibold mb-6 border-l-4 pl-2 border-colorOne">Annonces populaires</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -299,3 +390,101 @@ export default function Home() {
   </main>
   );
 }
+const fakeAds: Ads = [
+  {
+    id: 2,
+    title: "Peugeot 208 GT Line 1.2 PureTech 130ch",
+    createdAt: "2023-06-20T14:15:00Z",
+    price: 18900,
+    media: [{
+      media: {
+        url: "https://img.leboncoin.fr/api/v1/lbcpb1/images/57/7a/6d/577a6d799564b4df02e3e4712e7ea933d652ad28.jpg?rule=ad-large"
+      }
+    }],
+    favoritesBy: [],
+    attributes: [
+      {
+        attribute: {
+          id: 1,
+          name: "Kilométrage",
+          unit: "km",
+          type: "NUMBER"
+        },
+        value: 45000,
+        option: null
+      },
+      {
+        attribute: {
+          id: 2,
+          name: "Carburant",
+          unit: null,
+          type: "SELECT"
+        },
+        value: null,
+        option: { value: "Essence" }
+      },
+      {
+        attribute: {
+          id: 3,
+          name: "Année",
+          unit: null,
+          type: "NUMBER"
+        },
+        value: 2020,
+        option: null
+      }
+    ],
+    brand: { name: "Peugeot" },
+    model: { name: "208" },
+    region: { name: "Provence-Alpes-Côte d'Azur" },
+    department: { name: "Bouches-du-Rhône" },
+    user: {
+      id: 102,
+      username: "JeanDupont",
+      userType: "INDIVIDUAL",
+      image: { url: "https://randomuser.me/api/portraits/men/33.jpg" }
+    }
+  }
+];
+const fakeSearchHistory: Search[] = [
+  {
+    title: "Renault Clio Diesel moins de 15000€",
+    filters: {
+      search: "Renault Clio",
+      minPrice: 5000,
+      maxPrice: 15000,
+      attributes: [
+        {
+          attributeId: 2, // Carburant
+          value: [4]
+        }
+      ],
+      locationIds: [
+        {
+          type: "region",
+          id: 11,
+          name: "Île-de-France"
+        }
+      ]
+    },
+    searchedAt: "2023-06-25T09:45:00Z"
+  },
+  {
+    title: "Peugeot 208 essence récente",
+    filters: {
+      search: "Peugeot 208",
+      minPrice: 10000,
+      attributes: [
+        {
+          attributeId: 2, // Carburant
+          value: [4]
+        },
+        {
+          attributeId: 3, // Année
+          value: { min: 2018 }
+        }
+      ]
+    },
+    searchedAt: "2023-06-20T16:30:00Z"
+  }
+];

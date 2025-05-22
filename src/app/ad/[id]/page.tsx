@@ -11,6 +11,7 @@ import { useParams } from "next/navigation";
 import GalleryLightbox from "@/components/all/GalleryLightbox";
 import { UserAvatar } from "@/components/all/UserAvatar";
 import { favoriteAd, sendMessage, unfavoriteAd } from "@/lib/req/user";
+import { useLocalSearchStorage } from "@/components/hooks/useLocalSearchStorage";
 
 const formatPhone = (phone: string) => {
   const cleaned = phone.replace(/\D/g, ""); 
@@ -21,6 +22,7 @@ const formatPhone = (phone: string) => {
 
 export default function AdPage() {
   const session = useSession();
+  const { saveViewedAd } = useLocalSearchStorage();
   const router = useRouter();
   const [isLoading,setIsLoading]=useState(true);
   const params = useParams();
@@ -55,6 +57,7 @@ useEffect(() => {
       router.back();
       return;
     }
+    saveViewedAd(+id)
     const fetchAd=async()=>{
       const ad = await getAd(+id)
       setAd(ad)
@@ -333,28 +336,75 @@ useEffect(() => {
               </svg>
             </button>
             {showMessagePopup && (
-              <div
-                id="divMessage"
-                className="absolute z-50  -translate-x-[90%] -translate-y-[10%] bg-white border rounded-xl shadow-xl p-4 w-80 max-w-[90vw]"
-              >
-                <h3 className="font-semibold text-lg mb-2">Que souhaitez-vous demander ?</h3>
-                <textarea
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  rows={4}
-                  className="w-full border rounded-md p-2 text-sm resize-none"
+              <>
+                {/* Backdrop for mobile/tablet */}
+                <div
+                  onClick={() => setShowMessagePopup(false)}
+                  className="fixed inset-0 z-40 bg-black/30 sm:hidden"
                 />
-                <button
-                  onClick={() => {
-                    sendMessage({reciverId:ad.user.id,content:messageText,adId:ad.id}).then(()=>router.push('/compte/chat'))
-                    setShowMessagePopup(false);
-                  }}
-                  className="mt-3 bg-colorOne text-white w-full py-2 rounded-md hover:opacity-95 text-sm"
+
+                <div
+                  id="divMessage"
+                  className={`z-50 bg-white border shadow-xl p-4
+                    absolute  -translate-x-[95%] translate-y-[5%] inset-0 max-w-md w-[90vw] h-fit rounded-2xl flexsm:flex-col justify-center`}
                 >
-                  Envoyer
-                </button>
-              </div>
-            )}</>}
+                  <h3 className="font-semibold text-lg mb-2">Que souhaitez-vous demander ?</h3>
+
+                  {/* Default message buttons */}
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {[
+                      "Le véhicule est-il toujours disponible ?",
+                      "Quel est le kilométrage exact ?",
+                      "Est-ce que le prix est négociable ?",
+                      "Le contrôle technique est-il à jour ?",
+                      "Pouvez-vous m’envoyer plus de photos ?",
+                      "Le véhicule a-t-il eu des accidents ?",
+                    ].map((text, i) => (
+                      <button
+                        key={i}
+                        onClick={() =>
+                          setMessageText((prev) =>
+                            prev.includes(text) ? prev : prev + (prev ? "\n" : "") + text
+                          )
+                        }
+                        className="bg-gray-100 hover:bg-gray-200 text-xs px-3 py-1 rounded-full border text-gray-700"
+                      >
+                        {text}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Textarea */}
+                  <textarea
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    rows={4}
+                    className="w-full border rounded-md p-2 text-sm resize-none"
+                    placeholder="Écrivez votre message ici..."
+                  />
+
+                  {/* Send Button */}
+                  <button
+                    onClick={() => {
+                      if (session.status !== 'authenticated') {
+                        router.push("/api/auth/signin");
+                        return;
+                      }
+                      sendMessage({
+                        reciverId: ad.user.id,
+                        content: messageText,
+                        adId: ad.id,
+                      }).then(() => router.push("/compte/chat"));
+                      setShowMessagePopup(false);
+                    }}
+                    className="mt-3 bg-colorOne text-white w-full py-2 rounded-md hover:opacity-95 text-sm"
+                  >
+                    Envoyer
+                  </button>
+                </div>
+              </>
+            )}
+            </>}
             </div>
             <button className="w-full shadow-md font-semibold text-xl border rounded-xl py-2 ">
               +33 {formatPhone(ad.user.phone)}
@@ -440,28 +490,74 @@ useEffect(() => {
                       d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
               </svg>
             </button>
-            {showMessagePopup && (
-              <div
-                id="divMessage"
-                className="absolute z-50 left-0 -translate-y-[10%] bg-white border rounded-xl shadow-xl p-4 w-80 max-w-[90vw]"
-              >
-                <h3 className="font-semibold text-lg mb-2">Que souhaitez-vous demander ?</h3>
-                <textarea
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  rows={4}
-                  className="w-full border rounded-md p-2 text-sm resize-none"
+             {showMessagePopup && (
+              <>
+                {/* Backdrop for mobile/tablet */}
+                <div
+                  onClick={() => setShowMessagePopup(false)}
+                  className="fixed inset-0 z-40 bg-black/30 lg:hidden"
                 />
-                <button
-                  onClick={() => {
-                    sendMessage({reciverId:ad.user.id,content:messageText,adId:ad.id}).then(()=>router.push('/compte/chat'))
-                    setShowMessagePopup(false);
-                  }}
-                  className="mt-3 bg-colorOne text-white w-full py-2 rounded-md hover:opacity-95 text-sm"
+
+                <div
+                  id="divMessage"
+                  className={`z-50 bg-white border rounded-xl shadow-xl p-4 w-80 max-w-[90vw]
+                    absolute sm:fixed sm:inset-0 sm:m-auto sm:max-w-md sm:w-[90vw] sm:h-fit sm:rounded-2xl sm:flex sm:flex-col sm:justify-center`}
                 >
-                  Envoyer
-                </button>
-              </div>
+                  <h3 className="font-semibold text-lg mb-2">Que souhaitez-vous demander ?</h3>
+
+                  {/* Default message buttons */}
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {[
+                      "Le véhicule est-il toujours disponible ?",
+                      "Quel est le kilométrage exact ?",
+                      "Est-ce que le prix est négociable ?",
+                      "Le contrôle technique est-il à jour ?",
+                      "Pouvez-vous m’envoyer plus de photos ?",
+                      "Le véhicule a-t-il eu des accidents ?",
+                    ].map((text, i) => (
+                      <button
+                        key={i}
+                        onClick={() =>
+                          setMessageText((prev) =>
+                            prev.includes(text) ? prev : prev + (prev ? "\n" : "") + text
+                          )
+                        }
+                        className="bg-gray-100 hover:bg-gray-200 text-xs px-3 py-1 rounded-full border text-gray-700"
+                      >
+                        {text}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Textarea */}
+                  <textarea
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    rows={4}
+                    className="w-full border rounded-md p-2 text-sm resize-none"
+                    placeholder="Écrivez votre message ici..."
+                  />
+
+                  {/* Send Button */}
+                  <button
+                    onClick={() => {
+                      if (session.status !== 'authenticated') {
+                        router.push("/api/auth/signin");
+                        return;
+                      }
+                      sendMessage({
+                        reciverId: ad.user.id,
+                        content: messageText,
+                        adId: ad.id,
+                      }).then(() => router.push("/compte/chat"));
+                      setShowMessagePopup(false);
+                    }}
+                    className="mt-3 bg-colorOne text-white w-full py-2 rounded-md hover:opacity-95 text-sm"
+                  >
+                    Envoyer
+                  </button>
+                </div>
+              </>
             )}</>}
             </div>
             <button className="w-full shadow-md font-semibold text-xl border rounded-xl py-2 ">

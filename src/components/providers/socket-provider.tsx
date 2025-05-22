@@ -28,7 +28,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     if (!session?.backendToken?.accessToken) return;
 
     // Initialize socket connection with enhanced options
-    socketRef.current = io('http://localhost:8000', {
+    socketRef.current = io('https://back-le-marche.vercel.app', {
       auth: { token: session.backendToken.accessToken },
       transports: ['websocket'],
       autoConnect: true,
